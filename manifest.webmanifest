@@ -1,0 +1,13 @@
+{
+  "name": "Hockeycoach",
+  "short_name": "Coach",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5f6f4",
+  "theme_color": "#2f8f4e",
+  "icons": [
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png"},
+    {"src": "icon.png", "sizes": "180x180", "type": "image/png"}
+  ]
+}
