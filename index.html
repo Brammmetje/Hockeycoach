@@ -132,6 +132,11 @@ select.inp{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.
 .pos.filled text.lb{fill:rgba(255,255,255,.9)}
 .pos.empty text.nm{fill:var(--accent)}
 .pos.sel circle.bg{stroke:#ffd54a;stroke-width:3}
+.posveld-wrap{max-width:230px;margin:4px auto 0;padding:3px 0}
+.posveld{width:100%;height:auto;display:block;user-select:none;-webkit-user-select:none;overflow:visible}
+.posveld .pv{cursor:pointer}.posveld .pv circle{fill:var(--paper);stroke:var(--ink);stroke-width:.9}
+.posveld .pv text{font-family:var(--display);font-weight:700;fill:var(--ink);pointer-events:none}
+.posveld .pv.on circle{fill:var(--accent);stroke:#fff;stroke-width:1.2}.posveld .pv.on text{fill:var(--accent-ink)}
 .shirt-swatch{width:44px;height:44px}
 .swatches{display:flex;gap:8px;flex-wrap:wrap}
 .sw{width:34px;height:34px;border-radius:50%;border:2px solid transparent;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)}
@@ -207,7 +212,7 @@ input[type=file]{display:none}
 <script>
 /* ===================== DATA ===================== */
 const KEY='hockeycoach_v1';
-const VERSIE='1.23';
+const VERSIE='1.28';
 const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-3);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const CATS=['O8','O9','O10','O11','O12','O14','O16','O18','Senioren'];
@@ -227,8 +232,10 @@ const STD_SYS={
   '11v11':['4-3-3','3-3-3-1','4-4-2','3-4-3','4-2-3-1'],
 };
 const ROWNAMES={
-  def:{1:['Laatste vrouw'],2:['Linksachter','Rechtsachter'],3:['Linksachter','Centraal achter','Rechtsachter'],4:['Linksachter','Voorstopper','Laatste vrouw','Rechtsachter'],5:['Linksachter','Half links','Laatste vrouw','Half rechts','Rechtsachter']},
-  mid:{1:['Centrale mid'],2:['Linksmid','Rechtsmid'],3:['Linksmid','Centrale mid','Rechtsmid'],4:['Linksmid','Mid links','Mid rechts','Rechtsmid'],5:['Linksmid','Mid links','Centrale mid','Mid rechts','Rechtsmid']},
+  def:{1:['Laatste vrouw'],2:['Linksachter','Rechtsachter'],3:['Linksachter','Laatste vrouw','Rechtsachter'],4:['Linksachter','Voorstopper','Laatste vrouw','Rechtsachter'],5:['Linker vleugelverdediger','Linksachter','Laatste vrouw','Rechtsachter','Rechter vleugelverdediger']},
+  mid:{1:['Centrale mid'],2:['Linksmid','Rechtsmid'],3:['Linksmid','Centrale mid','Rechtsmid'],4:['Linksmid','Verdedigende mid','Aanvallende mid','Rechtsmid'],5:['Linksmid','Verdedigende mid','Centrale mid','Aanvallende mid','Rechtsmid']},
+  dmid:{1:['Verdedigende mid'],2:['Verdedigende mid L','Verdedigende mid R'],3:['Linksmid','Verdedigende mid','Rechtsmid'],4:['Linksmid','Verdedigende mid L','Verdedigende mid R','Rechtsmid']},
+  amid:{1:['Aanvallende mid'],2:['Aanvallende mid L','Aanvallende mid R'],3:['Linksmid','Aanvallende mid','Rechtsmid'],4:['Linksmid','Aanvallende mid L','Aanvallende mid R','Rechtsmid']},
   att:{1:['Spits'],2:['Spits L','Spits R'],3:['Linksbuiten','Spits','Rechtsbuiten'],4:['Linksbuiten','Spits L','Spits R','Rechtsbuiten'],5:['Linksbuiten','Spits L','Spits','Spits R','Rechtsbuiten']},
 };
 function stdPosities(format,sys){
@@ -239,9 +246,8 @@ function stdPosities(format,sys){
   rows.forEach((cnt,ri)=>{
     let type=ri===0?'def':(ri===rows.length-1?'att':'mid');
     if(rows.length===1) type='mid';
+    if(rows.length===4&&ri===1) type='dmid';if(rows.length===4&&ri===2) type='amid';
     let names=(ROWNAMES[type][cnt]||[]).slice();
-    if(rows.length===4&&ri===2) names=names.map(n=>n.replace('Spits','Aanvallende mid').replace('buiten','buiten'));
-    if(rows.length===4&&ri===1) names=names.map(n=>n);
     const y=rows.length===1?55:yBot+step*ri;
     for(let i=0;i<cnt;i++){
       const x=cnt===1?50:(cnt>=4?11+(78/(cnt-1))*i:15+(70/(cnt-1))*i);
@@ -250,21 +256,49 @@ function stdPosities(format,sys){
   });
   return out;
 }
-const FAM=[['K','Keeper'],['LA','Linksachter'],['VS','Voorstopper'],['LAV','Laatste vrouw'],['CA','Centraal achter'],['RA','Rechtsachter'],['LM','Linksmid'],['CM','Centrale mid'],['RM','Rechtsmid'],['LB','Linksbuiten'],['SP','Spits'],['RB','Rechtsbuiten']];
+const FAM=[['K','Keeper'],['LA','Linksachter'],['VS','Voorstopper'],['LAV','Laatste vrouw'],['RA','Rechtsachter'],['LVV','Linker vleugelverdediger'],['CVM','Centrale verdedigende mid'],['RVV','Rechter vleugelverdediger'],['LM','Linksmid'],['CM','Centrale mid'],['RM','Rechtsmid'],['CAM','Centrale aanvallende mid'],['LB','Linksbuiten'],['SP','Spits'],['RB','Rechtsbuiten']];
 const FAM_LABEL=Object.fromEntries(FAM);
 function famVan(naam){const n=(naam||'').toLowerCase();
-  if(n.includes('keeper'))return 'K';if(n.includes('linksachter'))return 'LA';if(n.includes('rechtsachter'))return 'RA';
+  if(n.includes('keeper'))return 'K';if(n.includes('hoge linksachter')||n.includes('linker vleugel'))return 'LVV';if(n.includes('hoge rechtsachter')||n.includes('rechter vleugel'))return 'RVV';
+  if(n.includes('linksachter'))return 'LA';if(n.includes('rechtsachter'))return 'RA';
   if(n.includes('voorstopper'))return 'VS';if(n.includes('laatste'))return 'LAV';
-  if(n.includes('achter')||n.includes('half'))return 'CA';
+  if(n.includes('verdedigende mid')||n.includes('achter')||n.includes('half'))return 'CVM';
+  if(n.includes('aanvallende mid'))return 'CAM';
   if(n.includes('linksmid'))return 'LM';if(n.includes('rechtsmid'))return 'RM';if(n.includes('mid'))return 'CM';
   if(n.includes('linksbuiten'))return 'LB';if(n.includes('rechtsbuiten'))return 'RB';if(n.includes('spits'))return 'SP';
   return naam;}
-function famCode(naam){const f=famVan(naam);return FAM_LABEL[f]?f:naam.slice(0,3)}
-function famsVoor(t){const set=new Set();alleSystemen(t.format).forEach(sy=>sy.posities.forEach(p=>set.add(famVan(p.naam))));return [...set].sort((a,b)=>{const ia=FAM.findIndex(x=>x[0]===a),ib=FAM.findIndex(x=>x[0]===b);return (ia<0?99:ia)-(ib<0?99:ib)})}
-function famChips(id,gekozen,multi,t){return `<div class="tagrow" id="${id}">${famsVoor(t).map(f=>`<button class="tag ${gekozen.includes(f)?'on':''}" data-f="${esc(f)}" onclick="chipTik(this,${multi})">${esc(FAM_LABEL[f]?f+' '+FAM_LABEL[f]:f)}</button>`).join('')}</div>`}
-function chipTik(b,multi){if(!multi)b.parentNode.querySelectorAll('.tag').forEach(x=>{if(x!==b)x.classList.remove('on')});b.classList.toggle('on')}
-function chipVal(id){return [...document.querySelectorAll('#'+id+' .tag.on')].map(x=>x.dataset.f)}
-function kanSpelen(p,posNaam){if(!p)return true;const sb=p.speelbaar||[];if(!sb.length)return true;return sb.includes(famVan(posNaam))||p.voorkeur===famVan(posNaam)}
+function famCode(naam){const f=famVan(naam);if(f==='CA')return 'CVM';return FAM_LABEL[f]?f:naam.slice(0,3)}
+function famsVoor(t){const set=new Set(FAM.map(f=>f[0]));if(!FORMATS[t.format].keeper)set.delete('K');alleSystemen(t.format).forEach(sy=>sy.posities.forEach(p=>{const f=famVan(p.naam);if(!FAM_LABEL[f]&&f!=='CA')set.add(f)}));return [...set].sort((a,b)=>{const ia=FAM.findIndex(x=>x[0]===a),ib=FAM.findIndex(x=>x[0]===b);return (ia<0?99:ia)-(ib<0?99:ib)})}
+const FAM_XY={K:[50,8],LA:[14,24],VS:[38,24],LAV:[62,24],RA:[86,24],LVV:[14,40],CVM:[50,40],RVV:[86,40],LM:[14,56],CM:[50,56],RM:[86,56],CAM:[50,72],LB:[14,88],SP:[50,88],RB:[86,88]};
+function famChips(id,gekozen,multi,t,na){
+  const fams=famsVoor(t);const heeftVS=fams.includes('VS')||fams.includes('LAV');
+  const xy=f=>FAM_XY[f]||null;
+  const eigen=fams.filter(f=>!xy(f));
+  const na2=na?';'+na:'';
+  const H=125;
+  let svg=`<svg viewBox="0 0 100 ${H}" class="posveld" id="${id}" xmlns="http://www.w3.org/2000/svg">
+  <rect x="0" y="0" width="100" height="${H}" rx="4" fill="var(--grass)"/>${[1,3,5,7].map(i=>`<rect x="0" y="${i*H/8}" width="100" height="${H/8}" fill="var(--grass-2)"/>`).join('')}
+  <rect x="2" y="2" width="96" height="${H-4}" fill="none" stroke="var(--chalk)" stroke-width=".8"/><line x1="2" y1="${H/2}" x2="98" y2="${H/2}" stroke="var(--chalk)" stroke-width=".8"/>
+  <line x1="2" y1="${H*.25}" x2="98" y2="${H*.25}" stroke="var(--chalk)" stroke-width=".8"/><line x1="2" y1="${H*.75}" x2="98" y2="${H*.75}" stroke="var(--chalk)" stroke-width=".8"/>
+  <path d="M 26 2 a 24 24 0 0 0 48 0" fill="none" stroke="var(--chalk)" stroke-width=".8"/><path d="M 26 ${H-2} a 24 24 0 0 1 48 0" fill="none" stroke="var(--chalk)" stroke-width=".8"/>
+  <rect x="46" y="${H-2}" width="8" height="3" fill="rgba(255,255,255,.35)" stroke="var(--chalk)" stroke-width=".6"/><rect x="46" y="-1" width="8" height="3" fill="rgba(255,255,255,.35)" stroke="var(--chalk)" stroke-width=".6"/>`;
+  fams.forEach(f=>{const p=xy(f);if(!p)return;const on=gekozen.includes(f);
+    svg+=`<g class="pv ${on?'on':''}" data-f="${esc(f)}" onclick="chipTik(this,${multi})${na2}" transform="translate(${p[0]} ${H-(p[1]/100)*H})"><circle r="7"/><text y="1.5" text-anchor="middle" font-size="${f.length>2?'4':'4.8'}">${esc(f)}</text></g>`});
+  svg+='</svg>';
+  return `<div class="posveld-wrap">${svg}</div>${eigen.length?`<div class="tagrow mt">${eigen.map(f=>`<button class="tag ${gekozen.includes(f)?'on':''}" data-f="${esc(f)}" onclick="chipTik(this,${multi})${na2}">${esc(f)}</button>`).join('')}</div>`:''}<div class="tiny muted" id="${id}_lbl" style="margin-top:6px">${famLegenda(gekozen)}</div>`;
+}
+function famLegenda(g){return g.length?g.map(f=>f+' = '+(FAM_LABEL[f]||f)).join(', '):'Nog niets gekozen'}
+function chipTik(b,multi){
+  const svg=b.closest('.posveld')||(b.closest('.tagrow')&&b.closest('.tagrow').previousElementSibling&&b.closest('.tagrow').previousElementSibling.querySelector('.posveld'));
+  const wrap=svg?svg.closest('.posveld-wrap'):null;const extra=wrap&&wrap.nextElementSibling&&wrap.nextElementSibling.classList.contains('tagrow')?wrap.nextElementSibling:null;
+  const alle=[...(svg?svg.querySelectorAll('[data-f]'):[]),...(extra?extra.querySelectorAll('[data-f]'):[])];
+  if(!alle.length)alle.push(...b.parentNode.querySelectorAll('[data-f]'));
+  if(!multi)alle.forEach(x=>{if(x!==b)x.classList.remove('on')});
+  b.classList.toggle('on');
+  if(svg){const l=document.getElementById(svg.id+'_lbl');if(l)l.textContent=famLegenda(chipVal(svg.id))}
+}
+function chipVal(id){const svg=document.getElementById(id);if(!svg)return [];const set=[...svg.querySelectorAll('[data-f].on')].map(x=>x.dataset.f);const wrap=svg.closest('.posveld-wrap');const extra=wrap&&wrap.nextElementSibling&&wrap.nextElementSibling.classList.contains('tagrow')?[...wrap.nextElementSibling.querySelectorAll('[data-f].on')].map(x=>x.dataset.f):[];return set.concat(extra)}
+function kanSpelen(p,posNaam){if(!p)return true;const sb=(p.speelbaar||[]).map(x=>x==='CA'?'CVM':x);if(p.voorkeur==='CA')p.voorkeur='CVM';if(!sb.length)return true;return sb.includes(famVan(posNaam))||p.voorkeur===famVan(posNaam)}
 const PATTERNS=[['effen','Effen'],['vstrepen','Verticale strepen'],['hstrepen','Horizontale strepen'],['geblokt','Geblokt'],['diagonaal','Diagonaal'],['half','Half-half']];
 const KLEUREN=['#ffffff','#111111','#d62828','#f77f00','#ffd60a','#1f6feb','#0b3d91','#1b8a3a','#7fd18a','#8b5cf6','#e91e8c','#00a3a3','#7a4b1e','#9aa3a8'];
 function defaultTenue(kleur){return {shirt:kleur||'#1f6feb',shirt2:'#ffffff',patroon:'effen',broek:'#111111',sokken:kleur||'#1f6feb'}}
@@ -937,8 +971,8 @@ PAGES.speler=()=>{
   let min=0,aantal=0;ws.forEach(w=>{const tot=speelTijd(w,t);if(w.aanwezig.includes(p.id)){aantal++;min+=tot[p.id]||0}});
   let html=`<div class="card"><label class="field-lbl">Naam</label><input class="inp" value="${esc(p.naam)}" onchange="spVeld('${p.id}','naam',this.value)">
   <div class="grid2"><div><label class="field-lbl">Rugnummer</label><input class="inp" type="number" inputmode="numeric" value="${p.nummer}" onchange="spVeld('${p.id}','nummer',this.value?+this.value:'')"></div><div><label class="field-lbl">Keeper</label><div class="seg"><button class="${!p.keeper?'on':''}" onclick="spVeld('${p.id}','keeper',false)">Nee</button><button class="${p.keeper?'on':''}" onclick="spVeld('${p.id}','keeper',true)">Ja</button></div></div></div>
-  <label class="field-lbl">Voorkeurspositie</label>${famChips('sp_vk',p.voorkeur?[p.voorkeur]:[],false,t).replace(/onclick="chipTik\(this,false\)"/g,'onclick="chipTik(this,false);spVeld(\''+p.id+'\',\'voorkeur\',chipVal(\'sp_vk\')[0]||\'\')"')}
-  <label class="field-lbl">Kan ook spelen op</label>${famChips('sp_sb',p.speelbaar||[],true,t).replace(/onclick="chipTik\(this,true\)"/g,'onclick="chipTik(this,true);spVeld(\''+p.id+'\',\'speelbaar\',chipVal(\'sp_sb\'))"')}
+  <label class="field-lbl">Voorkeurspositie</label>${famChips('sp_vk',p.voorkeur?[p.voorkeur]:[],false,t,`spVeld('${p.id}','voorkeur',chipVal('sp_vk')[0]||'')`)}
+  <label class="field-lbl">Kan ook spelen op</label>${famChips('sp_sb',p.speelbaar||[],true,t,`spVeld('${p.id}','speelbaar',chipVal('sp_sb'))`)}
   <label class="field-lbl">Notities</label><textarea class="inp" onchange="spVeld('${p.id}','notities',this.value)">${esc(p.notities||'')}</textarea></div>`;
   html+=`<div class="card"><h2>Seizoen ${sz}</h2><div class="kv"><span>Wedstrijden aanwezig</span><b>${aantal} van ${ws.length}</b></div><div class="kv"><span>Speelminuten</span><b>${Math.round(min)}</b></div><div class="kv"><span>Gemiddeld per wedstrijd</span><b>${aantal?Math.round(min/aantal):0} min</b></div></div>`;
   html+=`<div class="card"><h2>Leerdoelen</h2>${p.leerdoelen.map((d,i)=>`<div class="line-card"><div class="hd"><input class="inp" style="flex:1" value="${esc(d.tekst)}" onchange="team().spelers.find(x=>x.id==='${p.id}').leerdoelen[${i}].tekst=this.value;save()"><button class="check ${d.behaald?'on':''}" onclick="const d=team().spelers.find(x=>x.id==='${p.id}').leerdoelen[${i}];d.behaald=!d.behaald;save();render()" aria-label="Behaald">${I.check}</button><button class="iconbtn" style="width:30px;height:30px;box-shadow:none;color:var(--ink-3)" onclick="team().spelers.find(x=>x.id==='${p.id}').leerdoelen.splice(${i},1);save();render()">${I.trash}</button></div>
