@@ -223,7 +223,7 @@ input[type=file]{display:none}
 <script>
 /* ===================== DATA ===================== */
 const KEY='hockeycoach_v1';
-const VERSIE='1.34';
+const VERSIE='1.35';
 const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-3);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const CATS=['O8','O9','O10','O11','O12','O14','O16','O18','Senioren'];
@@ -325,6 +325,8 @@ function kanSpelen(p,posNaam){if(!p)return true;const sb=(p.speelbaar||[]).map(x
 const PATTERNS=[['effen','Effen'],['vstrepen','Verticale strepen'],['vsmal','Smalle verticale strepen'],['hstrepen','Horizontale strepen'],['hsmal','Smalle horizontale strepen'],['geblokt','Geblokt'],['ruiten','Ruiten'],['diagonaal','Diagonale strepen'],['half','Links-rechts'],['halfh','Boven-onder'],['schuin','Schuin gedeeld'],['kwarten','Kwarten'],['sjerp','Sjerp'],['baan','Baan in het midden'],['borstband','Borstband'],['mouwen','Mouwen'],['raglan','Schouders en mouwen'],['boord','Kraag en boorden'],['verloop','Verloop']];
 const KLEUREN=['#ffffff','#111111','#d62828','#f77f00','#ffd60a','#1f6feb','#0b3d91','#1b8a3a','#7fd18a','#8b5cf6','#e91e8c','#00a3a3','#7a4b1e','#9aa3a8'];
 function defaultTenue(kleur){return {shirt:kleur||'#1f6feb',shirt2:'#ffffff',patroon:'effen',broek:'#111111',sokken:kleur||'#1f6feb'}}
+/* een wedstrijd is voorbij twee uur na de ingevulde tijd; zonder tijd pas aan het eind van die dag */
+function wedVoorbij(w){if(!w.datum)return false;const d=new Date(w.datum+'T'+(w.tijd||'22:00')+':00');return d.getTime()+2*3600e3<Date.now()}
 function seizoenNu(){const d=new Date();const y=d.getMonth()>=7?d.getFullYear():d.getFullYear()-1;return y+'/'+(y+1)}
 
 let S=null;
@@ -486,8 +488,8 @@ const PAGES={};
 PAGES.start=()=>{
   const vandaag=new Date().toISOString().slice(0,10);
   const uur=new Date().getHours();const groet=uur<12?'Goedemorgen':(uur<18?'Goedemiddag':'Goedenavond');
-  const kaart=t=>{const ws=S.wedstrijden.filter(w=>w.teamId===t.id&&w.datum>=vandaag).sort((a,b)=>(a.datum+a.tijd).localeCompare(b.datum+b.tijd));const w=ws[0];
-    return `<button class="item" onclick="kiesTeam('${t.id}')"><span>${tenueSVG(t.tenue,48)}</span><div class="txt"><div class="t">${esc(t.naam)}</div><div class="d">${geslachtLabel(t)}, ${t.categorie}, ${t.spelers.length} spelers</div><div class="d" style="color:var(--ink-2)">${w?'Volgende: '+fmtDatum(w.datum)+' tegen '+esc(w.tegenstander):'Geen wedstrijd gepland'}</div></div><span class="chev">${I.chev}</span></button>`};
+  const kaart=t=>{const ws=S.wedstrijden.filter(w=>w.teamId===t.id&&!wedVoorbij(w)).sort((a,b)=>(a.datum+a.tijd).localeCompare(b.datum+b.tijd));const w=ws[0];
+    return `<button class="item" onclick="kiesTeam('${t.id}')"><span>${tenueSVG(t.tenue,48)}</span><div class="txt"><div class="t">${esc(t.naam)}</div><div class="d">${geslachtLabel(t)}, ${t.categorie}, ${t.spelers.length} spelers</div><div class="d" style="color:var(--ink-2)">${w?'Volgende: '+fmtDatum(w.datum)+(w.tijd?' '+w.tijd:'')+' tegen '+esc(w.tegenstander):'Nog geen volgende wedstrijd ingepland'}</div></div><span class="chev">${I.chev}</span></button>`};
   let html=`<div class="start-hero"><h1>${groet}</h1><p class="muted">${S.teams.length?'Welk team ga je voorbereiden?':'Welkom bij Hockeycoach. Maak je eerste team aan, of kijk eerst rond met een voorbeeldteam.'}</p></div>`;
   if(S.teams.length)html+=`<div class="card"><div class="list">${S.teams.map(kaart).join('')}</div></div>`;
   html+=`<div class="btnrow mt"><button class="btn ${S.teams.length?'sec':''}" onclick="nieuwTeam()">${I.plus} Nieuw team</button>${S.teams.some(t=>t.naam.startsWith('Voorbeeldteam'))?'':`<button class="btn ghost" onclick="laadVoorbeeld()">Voorbeeldteam</button>`}</div>`;
@@ -509,9 +511,9 @@ PAGES.wedstrijden=()=>{
   const sz=S.instellingen.seizoen;
   const ws=S.wedstrijden.filter(w=>w.teamId===t.id&&w.seizoen===sz).sort((a,b)=>(a.datum+a.tijd).localeCompare(b.datum+b.tijd));
   const vandaag=new Date().toISOString().slice(0,10);
-  const komend=ws.filter(w=>w.datum>=vandaag),gespeeld=ws.filter(w=>w.datum<vandaag).reverse();
+  const komend=ws.filter(w=>!wedVoorbij(w)),gespeeld=ws.filter(w=>wedVoorbij(w)).reverse();
   const item=w=>{const d=new Date(w.datum+'T12:00:00');const u=w.uitslag&&w.uitslag.voor!==''&&w.uitslag.voor!=null&&w.uitslag.voor!==undefined;
-    return `<button class="item" onclick="go('wedstrijd',{id:'${w.id}'})"><div class="date-block ${w.datum<vandaag?'past':''}"><small>${d.toLocaleDateString('nl-NL',{weekday:'short'})}</small><b>${d.getDate()}</b><small>${d.toLocaleDateString('nl-NL',{month:'short'})}</small></div><div class="txt"><div class="t">${esc(w.tegenstander)}</div><div class="d">${w.tijd?w.tijd+' uur, ':''}${w.thuis?'thuis':'uit'}${w.uitTenue?', uittenue':''}${(w.doelen||[]).length?', '+w.doelen.length+' doelen':''}</div></div>${u?`<span class="pill ${w.uitslag.voor>w.uitslag.tegen?'ok':(w.uitslag.voor<w.uitslag.tegen?'':'grey')}">${w.uitslag.voor} - ${w.uitslag.tegen}</span>`:''}<span class="chev">${I.chev}</span></button>`};
+    return `<button class="item" onclick="go('wedstrijd',{id:'${w.id}'})"><div class="date-block ${wedVoorbij(w)?'past':''}"><small>${d.toLocaleDateString('nl-NL',{weekday:'short'})}</small><b>${d.getDate()}</b><small>${d.toLocaleDateString('nl-NL',{month:'short'})}</small></div><div class="txt"><div class="t">${esc(w.tegenstander)}</div><div class="d">${w.tijd?w.tijd+' uur, ':''}${w.thuis?'thuis':'uit'}${w.uitTenue?', uittenue':''}${(w.doelen||[]).length?', '+w.doelen.length+' doelen':''}</div></div>${u?`<span class="pill ${w.uitslag.voor>w.uitslag.tegen?'ok':(w.uitslag.voor<w.uitslag.tegen?'':'grey')}">${w.uitslag.voor} - ${w.uitslag.tegen}</span>`:''}<span class="chev">${I.chev}</span></button>`};
   let body=backupBanner()+seizoenBar();
   if(!ws.length) body+=`<div class="empty"><h3>Nog geen wedstrijden in ${sz}</h3><p>Voeg de eerste wedstrijd toe of plak het programma van hockey.nl.</p><div class="btnrow"><button class="btn" onclick="nieuweWedstrijd()">${I.plus} Wedstrijd</button><button class="btn sec" onclick="importProgramma()">Programma plakken</button></div></div>`;
   else{
