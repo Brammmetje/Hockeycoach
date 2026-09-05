@@ -137,6 +137,7 @@ select.inp{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.
 .posveld .pv{cursor:pointer}.posveld .pv circle{fill:var(--paper);stroke:var(--ink);stroke-width:.9}
 .posveld .pv text{font-family:var(--display);font-weight:700;fill:var(--ink);pointer-events:none}
 .posveld .pv.on circle{fill:var(--accent);stroke:#fff;stroke-width:1.2}.posveld .pv.on text{fill:var(--accent-ink)}
+.tag.eigen{border-style:dashed}
 .shirt-swatch{width:44px;height:44px}
 .swatches{display:flex;gap:8px;flex-wrap:wrap}
 .sw{width:34px;height:34px;border-radius:50%;border:2px solid transparent;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)}
@@ -186,6 +187,13 @@ select.inp{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.
 .stat .n{font-family:var(--display);font-weight:700;width:60px;text-align:right}
 .banner{background:#fff6dd;border:1px solid #f1dfa8;color:#6b4d00;border-radius:12px;padding:10px 12px;font-size:14px;margin:10px 0;display:flex;gap:10px;align-items:center}
 .banner .btn{flex:0 0 auto}
+.banner.rood{background:#fbe9e9;border-color:#f0c2c2;color:#8a1f1f}
+.banner.rood b{color:#8a1f1f}
+.pill.rood{background:#fbe9e9;color:var(--danger)}
+.chain .arr.conflict{color:var(--danger);background:#fbe9e9}
+.chain .arr.conflict small{color:var(--danger)}
+.pos.warn circle.bg{stroke:#ff5252}
+.toast button{color:#ffd54a;font-weight:700;margin-left:14px;font-family:var(--display);font-size:15px}
 .imgprev{width:100%;border-radius:10px;display:block;margin-top:8px}
 .season-bar{display:flex;gap:8px;align-items:center;margin:4px 0 8px;overflow-x:auto;padding-bottom:4px}
 .season-bar::-webkit-scrollbar{display:none}
@@ -203,6 +211,9 @@ select.inp{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.
 .sr-only{position:absolute;left:-9999px}
 input[type=file]{display:none}
 .drag-hint{font-size:13px;color:var(--ink-3);text-align:center;margin-top:4px}
+.start-hero{padding:18px 4px 10px}
+.start-hero h1{font-size:36px;letter-spacing:-.02em}
+.start-hero p{font-size:16px;margin:8px 0 0;max-width:34ch}
 </style>
 </head>
 <body>
@@ -212,7 +223,7 @@ input[type=file]{display:none}
 <script>
 /* ===================== DATA ===================== */
 const KEY='hockeycoach_v1';
-const VERSIE='1.28';
+const VERSIE='1.34';
 const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-3);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const CATS=['O8','O9','O10','O11','O12','O14','O16','O18','Senioren'];
@@ -251,10 +262,20 @@ function stdPosities(format,sys){
     const y=rows.length===1?55:yBot+step*ri;
     for(let i=0;i<cnt;i++){
       const x=cnt===1?50:(cnt>=4?11+(78/(cnt-1))*i:15+(70/(cnt-1))*i);
-      out.push({naam:names[i]||('Positie '+(i+1)),x,y});
+      out.push({naam:geslachtNaam(names[i]||('Positie '+(i+1))),x,y});
     }
   });
   return out;
+}
+/* dames of heren: alleen 'Laatste vrouw' / 'Laatste man' verschilt */
+function geslachtNaam(n,t){t=t||team();if(t&&t.geslacht==='heren')return n.replace('Laatste vrouw','Laatste man');return n.replace('Laatste man','Laatste vrouw')}
+const geslachtLabel=t=>t&&t.geslacht==='heren'?'Heren':'Dames';
+function zetGeslacht(g){
+  const t=team();t.geslacht=g;
+  const fix=ops=>{if(ops)ops.posities.forEach(p=>p.naam=geslachtNaam(p.naam,t))};
+  if(t.standaard)fix(t.standaard.opstelling);
+  S.wedstrijden.filter(w=>w.teamId===t.id).forEach(w=>{fix(w.opstelling);(w.scenarios||[]).forEach(sc=>fix(sc.opstelling))});
+  save();render();
 }
 const FAM=[['K','Keeper'],['LA','Linksachter'],['VS','Voorstopper'],['LAV','Laatste vrouw'],['RA','Rechtsachter'],['LVV','Linker vleugelverdediger'],['CVM','Centrale verdedigende mid'],['RVV','Rechter vleugelverdediger'],['LM','Linksmid'],['CM','Centrale mid'],['RM','Rechtsmid'],['CAM','Centrale aanvallende mid'],['LB','Linksbuiten'],['SP','Spits'],['RB','Rechtsbuiten']];
 const FAM_LABEL=Object.fromEntries(FAM);
@@ -271,7 +292,7 @@ function famCode(naam){const f=famVan(naam);if(f==='CA')return 'CVM';return FAM_
 function famsVoor(t){const set=new Set(FAM.map(f=>f[0]));if(!FORMATS[t.format].keeper)set.delete('K');alleSystemen(t.format).forEach(sy=>sy.posities.forEach(p=>{const f=famVan(p.naam);if(!FAM_LABEL[f]&&f!=='CA')set.add(f)}));return [...set].sort((a,b)=>{const ia=FAM.findIndex(x=>x[0]===a),ib=FAM.findIndex(x=>x[0]===b);return (ia<0?99:ia)-(ib<0?99:ib)})}
 const FAM_XY={K:[50,8],LA:[14,24],VS:[38,24],LAV:[62,24],RA:[86,24],LVV:[14,40],CVM:[50,40],RVV:[86,40],LM:[14,56],CM:[50,56],RM:[86,56],CAM:[50,72],LB:[14,88],SP:[50,88],RB:[86,88]};
 function famChips(id,gekozen,multi,t,na){
-  const fams=famsVoor(t);const heeftVS=fams.includes('VS')||fams.includes('LAV');
+  const fams=famsVoor(t);
   const xy=f=>FAM_XY[f]||null;
   const eigen=fams.filter(f=>!xy(f));
   const na2=na?';'+na:'';
@@ -285,9 +306,9 @@ function famChips(id,gekozen,multi,t,na){
   fams.forEach(f=>{const p=xy(f);if(!p)return;const on=gekozen.includes(f);
     svg+=`<g class="pv ${on?'on':''}" data-f="${esc(f)}" onclick="chipTik(this,${multi})${na2}" transform="translate(${p[0]} ${H-(p[1]/100)*H})"><circle r="7"/><text y="1.5" text-anchor="middle" font-size="${f.length>2?'4':'4.8'}">${esc(f)}</text></g>`});
   svg+='</svg>';
-  return `<div class="posveld-wrap">${svg}</div>${eigen.length?`<div class="tagrow mt">${eigen.map(f=>`<button class="tag ${gekozen.includes(f)?'on':''}" data-f="${esc(f)}" onclick="chipTik(this,${multi})${na2}">${esc(f)}</button>`).join('')}</div>`:''}<div class="tiny muted" id="${id}_lbl" style="margin-top:6px">${famLegenda(gekozen)}</div>`;
+  return `<div class="posveld-wrap">${svg}</div>${eigen.length?`<div class="tagrow" style="margin-top:8px"><span class="tiny muted" style="width:100%">Zelf aangemaakte posities uit je eigen opstellingen</span>${eigen.map(f=>`<button class="tag eigen ${gekozen.includes(f)?'on':''}" data-f="${esc(f)}" onclick="chipTik(this,${multi})${na2}">${esc(f)}</button>`).join('')}</div>`:''}<div class="tiny muted" id="${id}_lbl" style="margin-top:6px">${famLegenda(gekozen)}</div>`;
 }
-function famLegenda(g){return g.length?g.map(f=>f+' = '+(FAM_LABEL[f]||f)).join(', '):'Nog niets gekozen'}
+function famLegenda(g){return g.length?g.map(f=>FAM_LABEL[f]?f+' = '+geslachtNaam(FAM_LABEL[f]):f+' (zelf aangemaakt)').join(', '):'Nog niets gekozen'}
 function chipTik(b,multi){
   const svg=b.closest('.posveld')||(b.closest('.tagrow')&&b.closest('.tagrow').previousElementSibling&&b.closest('.tagrow').previousElementSibling.querySelector('.posveld'));
   const wrap=svg?svg.closest('.posveld-wrap'):null;const extra=wrap&&wrap.nextElementSibling&&wrap.nextElementSibling.classList.contains('tagrow')?wrap.nextElementSibling:null;
@@ -296,10 +317,12 @@ function chipTik(b,multi){
   if(!multi)alle.forEach(x=>{if(x!==b)x.classList.remove('on')});
   b.classList.toggle('on');
   if(svg){const l=document.getElementById(svg.id+'_lbl');if(l)l.textContent=famLegenda(chipVal(svg.id))}
+  // een voorkeurspositie is altijd ook een speelbare positie
+  if(svg&&/_vk$/.test(svg.id)&&b.classList.contains('on')){const sb=document.getElementById(svg.id.replace(/_vk$/,'_sb'));if(sb){const wrap=sb.closest('.posveld-wrap');const extra=wrap&&wrap.nextElementSibling&&wrap.nextElementSibling.classList.contains('tagrow')?wrap.nextElementSibling:null;const doel=[...sb.querySelectorAll('[data-f]'),...(extra?extra.querySelectorAll('[data-f]'):[])].find(x=>x.dataset.f===b.dataset.f);if(doel)doel.classList.add('on');const l2=document.getElementById(sb.id+'_lbl');if(l2)l2.textContent=famLegenda(chipVal(sb.id))}}
 }
 function chipVal(id){const svg=document.getElementById(id);if(!svg)return [];const set=[...svg.querySelectorAll('[data-f].on')].map(x=>x.dataset.f);const wrap=svg.closest('.posveld-wrap');const extra=wrap&&wrap.nextElementSibling&&wrap.nextElementSibling.classList.contains('tagrow')?[...wrap.nextElementSibling.querySelectorAll('[data-f].on')].map(x=>x.dataset.f):[];return set.concat(extra)}
 function kanSpelen(p,posNaam){if(!p)return true;const sb=(p.speelbaar||[]).map(x=>x==='CA'?'CVM':x);if(p.voorkeur==='CA')p.voorkeur='CVM';if(!sb.length)return true;return sb.includes(famVan(posNaam))||p.voorkeur===famVan(posNaam)}
-const PATTERNS=[['effen','Effen'],['vstrepen','Verticale strepen'],['hstrepen','Horizontale strepen'],['geblokt','Geblokt'],['diagonaal','Diagonaal'],['half','Half-half']];
+const PATTERNS=[['effen','Effen'],['vstrepen','Verticale strepen'],['vsmal','Smalle verticale strepen'],['hstrepen','Horizontale strepen'],['hsmal','Smalle horizontale strepen'],['geblokt','Geblokt'],['ruiten','Ruiten'],['diagonaal','Diagonale strepen'],['half','Links-rechts'],['halfh','Boven-onder'],['schuin','Schuin gedeeld'],['kwarten','Kwarten'],['sjerp','Sjerp'],['baan','Baan in het midden'],['borstband','Borstband'],['mouwen','Mouwen'],['raglan','Schouders en mouwen'],['boord','Kraag en boorden'],['verloop','Verloop']];
 const KLEUREN=['#ffffff','#111111','#d62828','#f77f00','#ffd60a','#1f6feb','#0b3d91','#1b8a3a','#7fd18a','#8b5cf6','#e91e8c','#00a3a3','#7a4b1e','#9aa3a8'];
 function defaultTenue(kleur){return {shirt:kleur||'#1f6feb',shirt2:'#ffffff',patroon:'effen',broek:'#111111',sokken:kleur||'#1f6feb'}}
 function seizoenNu(){const d=new Date();const y=d.getMonth()>=7?d.getFullYear():d.getFullYear()-1;return y+'/'+(y+1)}
@@ -329,24 +352,49 @@ function applyTheme(){
   document.querySelector('meta[name=theme-color]').setAttribute('content','#f5f6f4');
 }
 /* ===================== SHIRT SVG ===================== */
+/* Eén shirtvorm (60x60) voor icoontjes en tenue-figuur. Romp 18..42, mouwen tot 8 en 52. */
+const SHIRT_PATH='M23 4 L11 10 L8 22 L18 26 L18 54 L42 54 L42 26 L52 22 L49 10 L37 4 Q30 12 23 4 Z';
+const SHIRT_KRAAG='M23 4 Q30 12 37 4';
+function shirtDelen(ten,id){
+  const s=ten.shirt,s2=ten.shirt2||'#ffffff';const pt=ten.patroon||'effen';
+  const pat=(w,h,inner,extra)=>`<pattern id="${id}" width="${w}" height="${h}" patternUnits="userSpaceOnUse" ${extra||''}>${inner}</pattern>`;
+  let fill=s,defs='',over='';
+  if(pt==='vstrepen'){defs=pat(16,16,`<rect width="16" height="16" fill="${s}"/><rect width="8" height="16" fill="${s2}"/>`);fill=`url(#${id})`}
+  else if(pt==='vsmal'){defs=pat(8,8,`<rect width="8" height="8" fill="${s}"/><rect width="2.5" height="8" fill="${s2}"/>`);fill=`url(#${id})`}
+  else if(pt==='hstrepen'){defs=pat(16,16,`<rect width="16" height="16" fill="${s}"/><rect width="16" height="8" fill="${s2}"/>`);fill=`url(#${id})`}
+  else if(pt==='hsmal'){defs=pat(8,8,`<rect width="8" height="8" fill="${s}"/><rect width="8" height="2.5" fill="${s2}"/>`);fill=`url(#${id})`}
+  else if(pt==='geblokt'){defs=pat(20,20,`<rect width="20" height="20" fill="${s}"/><rect width="10" height="10" fill="${s2}"/><rect x="10" y="10" width="10" height="10" fill="${s2}"/>`);fill=`url(#${id})`}
+  else if(pt==='ruiten'){defs=pat(16,16,`<rect width="16" height="16" fill="${s}"/><rect width="8" height="8" fill="${s2}"/><rect x="8" y="8" width="8" height="8" fill="${s2}"/>`,'patternTransform="rotate(45)"');fill=`url(#${id})`}
+  else if(pt==='diagonaal'){defs=pat(14,14,`<rect width="14" height="14" fill="${s}"/><path d="M-4 4L4 -4M0 14L14 0M10 18L18 10" stroke="${s2}" stroke-width="5"/>`);fill=`url(#${id})`}
+  else if(pt==='verloop'){defs=`<linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${s}"/><stop offset="1" stop-color="${s2}"/></linearGradient>`;fill=`url(#${id})`}
+  else if(pt==='half')over=`<rect x="0" y="0" width="30" height="60" fill="${s2}"/>`;
+  else if(pt==='halfh')over=`<rect x="0" y="0" width="60" height="29" fill="${s2}"/>`;
+  else if(pt==='schuin')over=`<polygon points="0,60 60,0 60,60" fill="${s2}"/>`;
+  else if(pt==='kwarten')over=`<rect x="0" y="0" width="30" height="29" fill="${s2}"/><rect x="30" y="29" width="30" height="31" fill="${s2}"/>`;
+  else if(pt==='sjerp')over=`<polygon points="4,0 20,0 60,40 60,56" fill="${s2}"/>`;
+  else if(pt==='baan')over=`<rect x="24" y="0" width="12" height="60" fill="${s2}"/>`;
+  else if(pt==='borstband')over=`<rect x="0" y="22" width="60" height="12" fill="${s2}"/>`;
+  else if(pt==='mouwen')over=`<rect x="0" y="0" width="18" height="60" fill="${s2}"/><rect x="42" y="0" width="18" height="60" fill="${s2}"/>`;
+  else if(pt==='raglan')over=`<path d="M0 0 H60 V26 H42 V13 H18 V26 H0 Z" fill="${s2}"/>`;
+  else if(pt==='boord')over=`<path d="${SHIRT_KRAAG}" fill="none" stroke="${s2}" stroke-width="4"/><path d="M8 22 L18 26 M52 22 L42 26" fill="none" stroke="${s2}" stroke-width="4"/>`;
+  return {fill,defs,over};
+}
+function shirtInner(ten){
+  const id='p'+uid();const d=shirtDelen(ten,id);
+  return `<defs>${d.defs}<clipPath id="c${id}"><path d="${SHIRT_PATH}"/></clipPath></defs>
+  <path d="${SHIRT_PATH}" fill="${d.fill}"/>${d.over?`<g clip-path="url(#c${id})">${d.over}</g>`:''}
+  <path d="${SHIRT_PATH}" fill="none" stroke="rgba(0,0,0,.28)" stroke-width="1.5" stroke-linejoin="round"/>
+  <path d="${SHIRT_KRAAG}" fill="none" stroke="rgba(0,0,0,.28)" stroke-width="1.5"/>`;
+}
 function shirtSVG(ten,size){
-  const id='p'+uid();const s=ten.shirt,s2=ten.shirt2||'#fff';
-  let fill=s,defs='';
-  const pat=(w,h,inner)=>`<pattern id="${id}" width="${w}" height="${h}" patternUnits="userSpaceOnUse">${inner}</pattern>`;
-  if(ten.patroon==='vstrepen'){defs=pat(16,16,`<rect width="16" height="16" fill="${s}"/><rect width="8" height="16" fill="${s2}"/>`);fill=`url(#${id})`}
-  else if(ten.patroon==='hstrepen'){defs=pat(16,16,`<rect width="16" height="16" fill="${s}"/><rect width="16" height="8" fill="${s2}"/>`);fill=`url(#${id})`}
-  else if(ten.patroon==='geblokt'){defs=pat(20,20,`<rect width="20" height="20" fill="${s}"/><rect width="10" height="10" fill="${s2}"/><rect x="10" y="10" width="10" height="10" fill="${s2}"/>`);fill=`url(#${id})`}
-  else if(ten.patroon==='diagonaal'){defs=pat(14,14,`<rect width="14" height="14" fill="${s}"/><path d="M-4 4L4 -4M0 14L14 0M10 18L18 10" stroke="${s2}" stroke-width="5"/>`);fill=`url(#${id})`}
-  else if(ten.patroon==='half'){defs=pat(60,60,`<rect width="60" height="60" fill="${s}"/><rect width="30" height="60" fill="${s2}"/>`);fill=`url(#${id})`}
-  return `<svg viewBox="0 0 60 60" width="${size||40}" height="${size||40}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>${defs}</defs>
-  <path d="M18 6 L6 12 L2 26 L14 30 L14 54 L46 54 L46 30 L58 26 L54 12 L42 6 Q30 14 18 6 Z" fill="${fill}" stroke="rgba(0,0,0,.25)" stroke-width="1.5" stroke-linejoin="round"/>
-  <path d="M18 6 Q30 16 42 6" fill="none" stroke="rgba(0,0,0,.25)" stroke-width="1.5"/></svg>`;
+  return `<svg viewBox="0 0 60 60" width="${size||40}" height="${size||40}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${shirtInner(ten)}</svg>`;
 }
 function tenueSVG(ten,size){
+  const rand='rgba(0,0,0,.28)';
   return `<svg viewBox="0 0 60 60" width="${size||40}" height="${size||40}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-  <g transform="translate(6 0) scale(.8)">${shirtSVG(ten,60).replace(/^<svg[^>]*>|<\/svg>$/g,'')}</g>
-  <rect x="17" y="43" width="26" height="10" rx="2" fill="${ten.broek}" stroke="rgba(0,0,0,.25)"/>
-  <rect x="19" y="55" width="8" height="5" rx="1.5" fill="${ten.sokken}" stroke="rgba(0,0,0,.25)"/><rect x="33" y="55" width="8" height="5" rx="1.5" fill="${ten.sokken}" stroke="rgba(0,0,0,.25)"/></svg>`;
+  <g transform="translate(11.4 1.5) scale(.62)">${shirtInner(ten)}</g>
+  <path d="M22 34.5 H38 V46 H31 L30 41 L29 46 H22 Z" fill="${ten.broek}" stroke="${rand}" stroke-width="1" stroke-linejoin="round"/>
+  <rect x="23" y="47" width="5.6" height="10.5" rx="1.2" fill="${ten.sokken}" stroke="${rand}" stroke-width="1"/><rect x="31.4" y="47" width="5.6" height="10.5" rx="1.2" fill="${ten.sokken}" stroke="${rand}" stroke-width="1"/></svg>`;
 }
 /* ===================== ICONS ===================== */
 const I={
@@ -359,7 +407,7 @@ const I={
   copy:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>',
   trash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>',
   tabW:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
-  tabT:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4L4 6v6l5 2v6h6v-6l5-2V6l-5-2c-1.6 1.6-3.4 1.6-5 0z"/></svg>',
+  tabT:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2.8L4.2 5 3 9.6l4.2 1.5V21h9.6v-9.9L21 9.6 19.8 5 15 2.8c-1.6 2.2-4.4 2.2-6 0z"/><path d="M9 2.8c1.6 2.2 4.4 2.2 6 0"/></svg>',
   tabTr:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
   tabM:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>',
   img:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-8 8"/></svg>',
@@ -367,7 +415,12 @@ const I={
 };
 /* ===================== UI HELPERS ===================== */
 let toastT=null;
-function toast(msg){const o=document.getElementById('overlay');let t=o.querySelector('.toast');if(!t){t=document.createElement('div');t.className='toast';o.appendChild(t)}t.textContent=msg;clearTimeout(toastT);toastT=setTimeout(()=>t.remove(),2200)}
+function toast(msg,actie){const o=document.getElementById('overlay');let t=o.querySelector('.toast');if(!t){t=document.createElement('div');t.className='toast';o.appendChild(t)}t.textContent=msg;
+  if(actie){const b=document.createElement('button');b.textContent=actie.label;b.onclick=()=>{t.remove();actie.fn()};t.appendChild(b)}
+  clearTimeout(toastT);toastT=setTimeout(()=>t.remove(),actie?7000:2200)}
+/* momentopname van alle data, om verwijderen ongedaan te maken */
+function momentopname(){const snap=JSON.stringify(S);const r=route;return ()=>{S=JSON.parse(snap);save();route=r;closeSheet();render();toast('Hersteld')}}
+function verwijderdToast(wat,herstel){toast(wat+' verwijderd',{label:'Herstel',fn:herstel})}
 function sheet(html,opts){
   const oud=document.getElementById('sheet');
   if(oud){const el=oud.querySelector('.sheet');const st=el.scrollTop;el.innerHTML=`<div class="grab"></div>${html}`;el.scrollTop=st;if(opts&&opts.focus){const f=el.querySelector(opts.focus);if(f)f.focus()}return}
@@ -384,14 +437,14 @@ function confirmSheet(titel,tekst,label,fn,danger){
 }
 const val=id=>{const el=document.getElementById(id);return el?el.value:''};
 /* ===================== ROUTER ===================== */
-let route={page:'wedstrijden'};
+let route={page:'start'};
 const hist=[];
 function go(page,params,replace){if(!replace)hist.push(route);route=Object.assign({page},params||{});closeSheet();render();window.scrollTo(0,0)}
-function back(){route=hist.pop()||{page:'wedstrijden'};closeSheet();render();window.scrollTo(0,0)}
+function back(){route=hist.pop()||{page:team()?'wedstrijden':'start'};closeSheet();render();window.scrollTo(0,0)}
 function tabTo(page){hist.length=0;route={page};closeSheet();render();window.scrollTo(0,0)}
 /* ===================== RENDER SHELL ===================== */
 const TABS=[['wedstrijden','Wedstrijden',I.tabW],['team','Team',I.tabT],['trainingen','Trainingen',I.tabTr],['meer','Meer',I.tabM]];
-const TABROOT={wedstrijden:'wedstrijden',wedstrijd:'wedstrijden',team:'team',speler:'team',teamvorm:'team',ontwerp:'team',trainingen:'trainingen',training:'trainingen',meer:'meer',balans:'meer',seizoen:'meer'};
+const TABROOT={start:'',wedstrijden:'wedstrijden',wedstrijd:'wedstrijden',team:'team',speler:'team',teamvorm:'team',ontwerp:'team',trainingen:'trainingen',training:'trainingen',meer:'meer',balans:'meer',seizoen:'meer'};
 function render(){
   applyTheme();
   const app=document.getElementById('app');const y=window.scrollY;
@@ -399,7 +452,8 @@ function render(){
   app.style.minHeight=app.offsetHeight+'px';
   app.innerHTML=fn();
   window.scrollTo(0,y);requestAnimationFrame(()=>{window.scrollTo(0,y);app.style.minHeight=''});
-  const cur=TABROOT[route.page]||'wedstrijden';
+  const cur=TABROOT[route.page]==null?'wedstrijden':TABROOT[route.page];
+  document.querySelector('.tabs').style.display=route.page==='start'?'none':'';
   document.getElementById('tabs').innerHTML=TABS.map(([k,l,ic])=>`<button class="tab ${cur===k?'on':''}" onclick="tabTo('${k}')">${ic}<span>${l}</span></button>`).join('');
   const hooks=app.querySelectorAll('[data-init]');hooks.forEach(h=>{const f=window[h.dataset.init];if(f)f(h)});
 }
@@ -408,14 +462,14 @@ function topbar(titel,sub,right,withBack){
 }
 function teamChip(){
   const t=team();
-  if(!t) return `<button class="chip" onclick="teamKiezer()"><span>Kies team</span></button>`;
-  return `<button class="chip" onclick="teamKiezer()"><span class="shirt">${shirtSVG(t.tenue,26)}</span><span>${esc(t.naam)}</span></button>`;
+  if(!t) return `<button class="chip" onclick="go('start')"><span>Kies team</span></button>`;
+  return `<button class="chip" onclick="go('start')"><span class="shirt">${shirtSVG(t.tenue,26)}</span><span>${esc(t.naam)}</span></button>`;
 }
 function teamKiezer(){
-  const lijst=S.teams.map(t=>`<button class="item" onclick="kiesTeam('${t.id}')"><span>${shirtSVG(t.tenue,34)}</span><div class="txt"><div class="t">${esc(t.naam)}</div><div class="d">${t.categorie}, ${FORMATS[t.format].label}</div></div>${t.id===S.instellingen.actiefTeam?`<span class="pill">actief</span>`:''}</button>`).join('');
+  const lijst=S.teams.map(t=>`<button class="item" onclick="kiesTeam('${t.id}')"><span>${shirtSVG(t.tenue,34)}</span><div class="txt"><div class="t">${esc(t.naam)}</div><div class="d">${geslachtLabel(t)}, ${t.categorie}, ${FORMATS[t.format].label}</div></div>${t.id===S.instellingen.actiefTeam?`<span class="pill">actief</span>`:''}</button>`).join('');
   sheet(`<h2>Teams</h2><div class="list mt">${lijst||'<p class="muted">Nog geen teams.</p>'}</div><button class="btn sec wide mt" onclick="closeSheet();nieuwTeam()">${I.plus} Nieuw team</button>`);
 }
-function kiesTeam(id){S.instellingen.actiefTeam=id;save();closeSheet();render()}
+function kiesTeam(id){S.instellingen.actiefTeam=id;save();closeSheet();if(route.page==='start')tabTo('wedstrijden');else render()}
 function seizoenen(){
   const set=new Set([S.instellingen.seizoen,seizoenNu()]);
   S.wedstrijden.forEach(w=>set.add(w.seizoen));S.trainingen.forEach(w=>set.add(w.seizoen));
@@ -429,6 +483,17 @@ function nieuwSeizoen(){
   sheet(`<h2>Nieuw seizoen</h2><label class="field-lbl">Seizoen</label><input class="inp" id="sz" value="${y}/${y+1}"><button class="btn wide mt" onclick="S.instellingen.seizoen=val('sz').trim();save();closeSheet();render()">Gebruik dit seizoen</button>`);
 }
 const PAGES={};
+PAGES.start=()=>{
+  const vandaag=new Date().toISOString().slice(0,10);
+  const uur=new Date().getHours();const groet=uur<12?'Goedemorgen':(uur<18?'Goedemiddag':'Goedenavond');
+  const kaart=t=>{const ws=S.wedstrijden.filter(w=>w.teamId===t.id&&w.datum>=vandaag).sort((a,b)=>(a.datum+a.tijd).localeCompare(b.datum+b.tijd));const w=ws[0];
+    return `<button class="item" onclick="kiesTeam('${t.id}')"><span>${tenueSVG(t.tenue,48)}</span><div class="txt"><div class="t">${esc(t.naam)}</div><div class="d">${geslachtLabel(t)}, ${t.categorie}, ${t.spelers.length} spelers</div><div class="d" style="color:var(--ink-2)">${w?'Volgende: '+fmtDatum(w.datum)+' tegen '+esc(w.tegenstander):'Geen wedstrijd gepland'}</div></div><span class="chev">${I.chev}</span></button>`};
+  let html=`<div class="start-hero"><h1>${groet}</h1><p class="muted">${S.teams.length?'Welk team ga je voorbereiden?':'Welkom bij Hockeycoach. Maak je eerste team aan, of kijk eerst rond met een voorbeeldteam.'}</p></div>`;
+  if(S.teams.length)html+=`<div class="card"><div class="list">${S.teams.map(kaart).join('')}</div></div>`;
+  html+=`<div class="btnrow mt"><button class="btn ${S.teams.length?'sec':''}" onclick="nieuwTeam()">${I.plus} Nieuw team</button>${S.teams.some(t=>t.naam.startsWith('Voorbeeldteam'))?'':`<button class="btn ghost" onclick="laadVoorbeeld()">Voorbeeldteam</button>`}</div>`;
+  html+=`<p class="tiny muted" style="text-align:center;margin-top:24px">Hockeycoach ${VERSIE}. Je data staat alleen op dit apparaat.</p>`;
+  return `<div class="main" style="padding-top:calc(var(--sat) + 28px)">${html}</div>`;
+};
 /* ===================== WEDSTRIJDEN ===================== */
 function backupBanner(){
   const heeftData=S.wedstrijden.length||S.teams.some(t=>t.spelers.length);
@@ -456,8 +521,38 @@ PAGES.wedstrijden=()=>{
   }
   return topbar('Wedstrijden','',teamChip()+`<button class="iconbtn acc" onclick="nieuweWedstrijd()" aria-label="Nieuwe wedstrijd">${I.plus}</button>`)+`<div class="main">${body}</div>`;
 };
-function geenTeam(){return `<div class="empty"><h3>Begin met een team</h3><p>Maak je eerste team aan met de spelers, het speelformat en het tenue.</p><button class="btn" onclick="nieuwTeam()">${I.plus} Nieuw team</button></div>`}
-function leegeWedstrijd(t){const w={id:uid(),teamId:t.id,seizoen:S.instellingen.seizoen,datum:new Date().toISOString().slice(0,10),tijd:'',tegenstander:'',thuis:true,uitTenue:false,aanwezig:t.spelers.map(p=>p.id),opstelling:null,lijnen:[],doelen:[],evaluatie:'',uitslag:{voor:'',tegen:''},notities:''};pasStandaardToe(w,t);return w}
+function geenTeam(){return `<div class="empty"><h3>Begin met een team</h3><p>Maak je eerste team aan met de spelers, het speelformat en het tenue. Of kijk eerst rond met een ingevuld voorbeeldteam.</p><div class="btnrow"><button class="btn" onclick="nieuwTeam()">${I.plus} Nieuw team</button><button class="btn sec" onclick="laadVoorbeeld()">Voorbeeldteam</button></div></div>`}
+/* ===================== VOORBEELDTEAM ===================== */
+function laadVoorbeeld(){
+  const dag=n=>{const d=new Date();d.setDate(d.getDate()+n);return d.toISOString().slice(0,10)};
+  let za=1;while(new Date(dag(za)+'T12:00:00').getDay()!==6)za++;
+  const spelers=[[1,'Bas de Groot','K',[],true],[2,'Tom Jansen','RA',['RB']],[3,'Jan Bakker','LA',['LM']],[4,'Piet Visser','LAV',['CM']],[5,'Kees Smit','VS',['LAV']],[6,'Sam Meijer','LM',['LB']],[7,'Daan de Boer','CM',['SP']],[8,'Luuk Mulder','RM',['RB']],[9,'Finn Bos','LB',['LM','LA']],[10,'Mees Vos','SP',['CM']],[11,'Sem Peters','RB',['RM','RA']],[12,'Noud Hendriks','CM',['LAV']],[13,'Bram Dekker','CM',['LM','VS']],[14,'Lars Kok','SP',['RB','RM']]];
+  const t={id:uid(),naam:'Voorbeeldteam Heren 1',geslacht:'heren',categorie:'Senioren',format:'11v11',goals:3,duur:70,tenue:{shirt:'#1b8a3a',shirt2:'#ffffff',patroon:'vstrepen',broek:'#ffffff',sokken:'#1b8a3a'},uitTenue:{shirt:'#ffffff',shirt2:'#1b8a3a',patroon:'sjerp',broek:'#111111',sokken:'#ffffff'},spelers:[]};
+  spelers.forEach(([nr,n,vk,sb,k])=>t.spelers.push({id:uid(),naam:n,nummer:nr,keeper:!!k,voorkeur:vk,speelbaar:[vk].concat(sb),notities:'',leerdoelen:[]}));
+  t.spelers[9].leerdoelen=[{tekst:'Eerder de bal spelen na de aanname',behaald:false,notities:[{datum:dag(-14),tekst:'Eerste helft goed, tweede helft weer te lang wachten'}]}];
+  t.spelers[1].notities='Reist mee met Jan';t.aanvoerder=t.spelers[1].id;
+  S.teams.push(t);S.instellingen.actiefTeam=t.id;
+  // gespeelde wedstrijd
+  const v=leegeWedstrijd(t);v.datum=dag(-14);v.tijd='14:45';v.tegenstander='HDM Heren 1';v.thuis=false;v.uitslag={voor:3,tegen:2};v.aanvoerder=t.aanvoerder;
+  v.doelen=[{id:uid(),tekst:'Druk zetten op de opbouw',behaald:true,sub:[{tekst:'eerste aanvaller gaat direct',behaald:true},{tekst:'tweede dekt de pass',behaald:true}]},{id:uid(),tekst:'Rustig uitverdedigen via de laatste man',behaald:false,sub:[]}];
+  v.evaluatie='Druk zetten ging goed, opbouw onder druk nog rommelig. Volgende week weer oefenen.';
+  S.wedstrijden.push(v);
+  // komende wedstrijd met opstelling
+  const w=leegeWedstrijd(t);w.datum=dag(za);w.tijd='12:45';w.tegenstander='Amsterdam Heren 1';w.thuis=true;w.aanvoerder=t.aanvoerder;
+  w.doelen=[{id:uid(),tekst:'Opbouw onder druk',behaald:false,sub:[{tekst:'keeper speelt naar de vrije achterspeler',behaald:false},{tekst:'middenvelders vragen de bal diep',behaald:false}]}];
+  w.notities='Verzamelen 11:45 bij het clubhuis. Rijders: Tom, Sam.';
+  S.wedstrijden.push(w);
+  // training
+  S.trainingen.push({id:uid(),teamId:t.id,seizoen:S.instellingen.seizoen,datum:dag(-3),titel:'Passen en aannemen onder druk',notities:'3 tegen 2 in de cirkel, daarna partijspel met opbouwregel',link:'',afbeelding:null,koppel:[{wedstrijdId:w.id,doelId:w.doelen[0].id}]});
+  save();
+  kiesSysteem(w.id,'std:4-3-3');
+  const ops=w.opstelling;const vrij=t.spelers.slice();
+  ops.posities.forEach(p=>{if(p.spelerId){vrij.splice(vrij.findIndex(x=>x.id===p.spelerId),1);return}const f=famVan(p.naam);let i=vrij.findIndex(x=>x.voorkeur===f);if(i<0)i=vrij.findIndex(x=>!x.keeper&&(x.speelbaar||[]).includes(f));if(i>=0)p.spelerId=vrij.splice(i,1)[0].id});
+  save();snelLijnen(w.id);
+  wsub='opstelling';go('wedstrijd',{id:w.id});
+  toast('Voorbeeldteam geladen. Weghalen kan via Team, Instellingen.');
+}
+function leegeWedstrijd(t){const w={id:uid(),teamId:t.id,seizoen:S.instellingen.seizoen,datum:new Date().toISOString().slice(0,10),tijd:'',tegenstander:'',thuis:true,uitTenue:false,aanwezig:t.spelers.map(p=>p.id),aanvoerder:t.aanvoerder&&speler(t,t.aanvoerder)?t.aanvoerder:null,opstelling:null,lijnen:[],doelen:[],evaluatie:'',uitslag:{voor:'',tegen:''},notities:''};pasStandaardToe(w,t);return w}
 function pasStandaardToe(w,t){
   if(!t.standaard||!t.standaard.opstelling)return false;
   w.opstelling=JSON.parse(JSON.stringify(t.standaard.opstelling));w.lijnen=JSON.parse(JSON.stringify(t.standaard.lijnen||[]));
@@ -470,7 +565,7 @@ function bewaarStandaard(wid){const w=wed(wid);const t=team();if(!w.opstelling){
 function nieuweWedstrijd(){
   const t=team();if(!t)return;
   sheet(`<h2>Nieuwe wedstrijd</h2>
-  <label class="field-lbl">Tegenstander</label><input class="inp" id="nw_teg" placeholder="Bijv. Bloemendaal MO12-1">
+  <label class="field-lbl">Tegenstander</label><input class="inp" id="nw_teg" placeholder="Bijv. HDM Heren 1">
   <div class="grid2"><div><label class="field-lbl">Datum</label><input class="inp" type="date" id="nw_dat" value="${new Date().toISOString().slice(0,10)}"></div><div><label class="field-lbl">Tijd</label><input class="inp" type="time" id="nw_tijd"></div></div>
   <label class="field-lbl">Thuis of uit</label><div class="seg" id="nw_seg"><button class="on" onclick="segSel(this)" data-v="1">Thuis</button><button onclick="segSel(this)" data-v="0">Uit</button></div>
   <button class="btn wide mt" onclick="bewaarNieuweWedstrijd()">Wedstrijd toevoegen</button>`,{focus:'#nw_teg'});
@@ -486,7 +581,7 @@ function bewaarNieuweWedstrijd(){
 function importProgramma(){
   const t=team();
   sheet(`<h2>Programma plakken</h2><p class="muted small">Kopieer het programma van je team op hockey.nl (of uit een mail) en plak het hieronder. De app zoekt per regel naar een datum, tijd en de tegenstander. Regels zonder datum worden overgeslagen; je kunt daarna alles nog aanpassen.</p>
-  <textarea class="inp" id="prog" style="min-height:160px" placeholder="za 12-09-2026 10:30 Alliance MO12-1 - Bloemendaal MO12-1"></textarea>
+  <textarea class="inp" id="prog" style="min-height:160px" placeholder="za 12-09-2026 14:45 Rotterdam Heren 1 - HDM Heren 1"></textarea>
   <button class="btn wide mt" onclick="verwerkProgramma()">Wedstrijden aanmaken</button>`,{focus:'#prog'});
 }
 function verwerkProgramma(){
@@ -554,7 +649,7 @@ function veldSVG(t,posities,opts){
   (posities||[]).forEach((p,i)=>{
     const y=H-(p.y/100)*H;const filled=!!p.spelerId;const lbl=filled?kort(t,p.spelerId):(p.k?'K':'+');
     const nr=filled&&speler(t,p.spelerId)&&speler(t,p.spelerId).nummer?speler(t,p.spelerId).nummer:'';
-    ps+=`<g class="pos ${filled?'filled':'empty'} ${opts.sel===i?'sel':''}" data-i="${i}" transform="translate(${p.x} ${y})" ${opts.onpos?`onclick="${opts.onpos}(${i})"`:''}><circle class="bg" r="7"/>${opts.drag?'<circle r="12" fill="transparent"/>':''}<text class="nm" y="${filled?'1.8':'2.4'}" font-size="${filled?'5':'8'}">${esc(filled?(nr||initials(naam(t,p.spelerId))):lbl)}</text><text class="lb" y="12.5">${esc(filled?lbl:p.naam)}</text></g>`;
+    ps+=`<g class="pos ${filled?'filled':'empty'} ${opts.sel===i?'sel':''} ${opts.warn&&opts.warn.includes(i)?'warn':''}" data-i="${i}" transform="translate(${p.x} ${y})" ${opts.onpos?`onclick="${opts.onpos}(${i})"`:''}><circle class="bg" r="7"/>${opts.drag?'<circle r="12" fill="transparent"/>':''}<text class="nm" y="${filled?'1.8':'2.4'}" font-size="${filled?'5':'8'}">${esc(filled?(nr||initials(naam(t,p.spelerId))):lbl)}</text><text class="lb" y="12.5">${esc(filled?lbl:p.naam)}</text>${filled&&opts.aanvoerder&&opts.aanvoerder===p.spelerId?'<circle cx="6" cy="-5.5" r="3.4" fill="#ffd54a" stroke="#15201a" stroke-width=".5"/><text y="-4.2" x="6" font-size="4.2" fill="#15201a">C</text>':''}</g>`;
   });
   return `<svg class="pitch" viewBox="-1 -1 102 ${H+8}" xmlns="http://www.w3.org/2000/svg" id="${opts.id||'veld'}">${g.join('')}${ps}</svg>`;
 }
@@ -574,7 +669,7 @@ function scenarioBalk(w){
 function nieuwScenario(wid){
   const w=wedRaw(wid);const t=team();
   if(!w.opstelling){toast('Maak eerst de basisopstelling');return}
-  sheet(`<h2>Nieuw scenario</h2><p class="muted small">Kies wie uitvalt. De app maakt een kopie van de basisopstelling en het wisselschema zonder die speler, en vult haar plek met de wissel uit haar lijn. Daarna pas je het scenario los van de basis aan.</p>
+  sheet(`<h2>Nieuw scenario</h2><p class="muted small">Kies wie uitvalt. De app maakt een kopie van de basisopstelling en het wisselschema zonder die speler, en vult die plek met de wissel uit dezelfde lijn. Daarna pas je het scenario los van de basis aan.</p>
   <label class="field-lbl">Valt uit</label><div class="tagrow" id="sc_uit">${w.aanwezig.map(id=>`<button class="tag" data-f="${id}" onclick="chipTik(this,true);document.getElementById('sc_naam').value='Als '+chipVal('sc_uit').map(x=>kort(team(),x)).join(' en ')+' uitvalt'">${esc(naam(t,id))}</button>`).join('')}</div>
   <label class="field-lbl">Naam</label><input class="inp" id="sc_naam" placeholder="Als Marie uitvalt">
   <button class="btn wide mt" onclick="maakScenario('${wid}')">Scenario maken</button>`);
@@ -602,7 +697,7 @@ function maakScenario(wid){
   sc.lijnen=sc.lijnen.filter(l=>l.posities.length);
   w.scenarios=w.scenarios||[];w.scenarios.push(sc);w._sc=sc.id;save();closeSheet();render();toast('Scenario aangemaakt, controleer de lijnen');
 }
-function verwijderScenario(wid){const w=wedRaw(wid);const sc=(w.scenarios||[]).find(x=>x.id===w._sc);if(!sc)return;confirmSheet('Scenario verwijderen?',sc.naam,'Verwijderen',()=>{w.scenarios=w.scenarios.filter(x=>x!==sc);w._sc=null;save();render()},true)}
+function verwijderScenario(wid){const w=wedRaw(wid);const sc=(w.scenarios||[]).find(x=>x.id===w._sc);if(!sc)return;confirmSheet('Scenario verwijderen?',sc.naam,'Verwijderen',()=>{const h=momentopname();w.scenarios=w.scenarios.filter(x=>x!==sc);w._sc=null;save();render();verwijderdToast('Scenario',h)},true)}
 function hernoemScenario(wid){const w=wedRaw(wid);const sc=(w.scenarios||[]).find(x=>x.id===w._sc);if(!sc)return;sheet(`<h2>Naam scenario</h2><input class="inp mt" id="scn" value="${esc(sc.naam)}"><button class="btn wide mt" onclick="wedRaw('${wid}').scenarios.find(x=>x.id==='${sc.id}').naam=val('scn').trim()||'Scenario';save();closeSheet();render()">Opslaan</button>`,{focus:'#scn'})}
 let wsub='opstelling';
 PAGES.wedstrijd=()=>{
@@ -630,7 +725,7 @@ function wedMenu(id){
   <button class="item" onclick="closeSheet();verwijderWedstrijd('${id}')"><span class="iconbtn" style="color:var(--danger)">${I.trash}</span><div class="txt"><div class="t" style="color:var(--danger)">Wedstrijd verwijderen</div></div></button></div>`);
 }
 function scenarioMenu(wid){sheet(`<h2>Scenario</h2><div class="list mt"><button class="item" onclick="closeSheet();hernoemScenario('${wid}')"><div class="txt"><div class="t">Naam wijzigen</div></div></button><button class="item" onclick="closeSheet();deelAfbeelding('${wid}')"><div class="txt"><div class="t">Dit scenario delen als afbeelding</div></div></button><button class="item" onclick="closeSheet();deelAlles('${wid}')"><div class="txt"><div class="t">Alles delen als afbeeldingen</div><div class="d">Basis plus alle scenario's</div></div></button><button class="item" onclick="closeSheet();verwijderScenario('${wid}')"><div class="txt"><div class="t" style="color:var(--danger)">Scenario verwijderen</div></div></button></div>`)}
-function verwijderWedstrijd(id){confirmSheet('Wedstrijd verwijderen?','Opstelling, wisselschema en doelen van deze wedstrijd gaan verloren.','Verwijderen',()=>{S.wedstrijden=S.wedstrijden.filter(w=>w.id!==id);save();back()},true)}
+function verwijderWedstrijd(id){confirmSheet('Wedstrijd verwijderen?','Opstelling, wisselschema en doelen van deze wedstrijd gaan verloren.','Verwijderen',()=>{const h=momentopname();S.wedstrijden=S.wedstrijden.filter(w=>w.id!==id);save();back();verwijderdToast('Wedstrijd',h)},true)}
 function kopieerVorige(id,vid){
   const w=wed(id),v=wedRaw(vid);if(!v)return;
   w.opstelling=JSON.parse(JSON.stringify(v.opstelling));
@@ -638,39 +733,63 @@ function kopieerVorige(id,vid){
   // afwezige spelers eruit
   w.opstelling.posities.forEach(p=>{if(p.spelerId&&!w.aanwezig.includes(p.spelerId))p.spelerId=null});
   w.lijnen.forEach(l=>{l.wissels=(l.wissels||[]).filter(s=>w.aanwezig.includes(s))});
+  if(!w.aanvoerder&&v.aanvoerder&&w.aanwezig.includes(v.aanvoerder))w.aanvoerder=v.aanvoerder;
   save();render();toast('Overgenomen van vorige wedstrijd');
 }
 /* --- opstelling --- */
+function statusRij(w,t){
+  if(w._scenario)return '';
+  const afw=t.spelers.length-w.aanwezig.length;
+  const cap=w.aanvoerder&&w.aanwezig.includes(w.aanvoerder)?kort(t,w.aanvoerder):null;
+  return `<div class="tagrow mb"><button class="tag ${afw?'':'on'}" onclick="aanwezigSheet('${w.id}')">${I.tabT}Aanwezig ${w.aanwezig.length} van ${t.spelers.length}</button><button class="tag ${cap?'on':''}" onclick="aanvoerderSheet('${w.id}')"><b style="font-family:var(--display)">C</b>${cap?'Aanvoerder '+esc(cap):'Aanvoerder kiezen'}</button></div>`;
+}
 function wedOpstelling(w,t){
   const aanwezig=t.spelers.filter(p=>w.aanwezig.includes(p.id));
   const F=FORMATS[t.format];
-  let html='';
+  let html=statusRij(w,t);
   if(!w.opstelling){
-    html+=`<div class="card"><h2>Kies een systeem</h2><p class="muted small" style="margin:0 0 10px">${F.label}. Je kunt de posities daarna nog per speler invullen.</p><div class="tagrow">${alleSystemen(t.format).map(s=>`<button class="tag" onclick="kiesSysteem('${w.id}','${s.id}')">${esc(s.naam)}${s.eigen?' (eigen)':''}</button>`).join('')}</div><button class="btn ghost wide mt" onclick="go('ontwerp',{terug:'${w.id}'})">Eigen opstelling ontwerpen</button></div>`;
-    html+=aanwezigKaart(w,t);
+    html+=`<div class="card"><h2>Kies een systeem</h2><p class="muted small" style="margin:0 0 10px">${F.label}. Daarna tik je per positie een speler aan.</p><div class="tagrow">${alleSystemen(t.format).map(s=>`<button class="tag" onclick="kiesSysteem('${w.id}','${s.id}')">${esc(s.naam)}${s.eigen?' (eigen)':''}</button>`).join('')}</div><button class="btn ghost wide mt" onclick="go('ontwerp',{terug:'${w.id}'})">Eigen opstelling ontwerpen</button></div>`;
     return html;
   }
   const ops=w.opstelling;
   const opgesteld=ops.posities.filter(p=>p.spelerId).map(p=>p.spelerId);
   const bank=aanwezig.filter(p=>!opgesteld.includes(p.id));
+  const leeg=ops.posities.filter(p=>!p.spelerId).length;
+  const fout=[];ops.posities.forEach((p,i)=>{const sp=speler(t,p.spelerId);if(!sp)return;if(p.k&&!sp.keeper)fout.push({i,txt:`${kort(t,sp.id)} staat op keeper maar is geen keeper.`});else if(!p.k&&(sp.speelbaar||[]).length&&!kanSpelen(sp,p.naam))fout.push({i,txt:`${kort(t,sp.id)} staat op ${famCode(p.naam)}, maar kan alleen op ${(sp.speelbaar||[]).join(', ')}.`})});
   html+=`<div class="row between"><span class="pill grey">${esc(ops.naam)}</span><button class="btn sm ghost" onclick="wisselSysteem('${w.id}')">Ander systeem</button></div>`;
-  html+=`<div class="pitch-wrap">${veldSVG(t,ops.posities,{onpos:'tikPositie'})}</div>`;
-  html+=`<p class="hint" style="text-align:center;margin-top:0">Tik op een positie om een speler te kiezen.</p>`;
-  html+=`<div class="card"><h2>Bank (${bank.length})</h2>${bank.length?`<div class="tagrow">${bank.map(p=>`<span class="tag">${esc(p.naam)}</span>`).join('')}</div>`:'<p class="muted small" style="margin:0">Iedereen die aanwezig is staat opgesteld.</p>'}</div>`;
-  html+=aanwezigKaart(w,t);
+  html+=`<div class="pitch-wrap">${veldSVG(t,ops.posities,{onpos:'tikPositie',aanvoerder:w.aanvoerder,warn:fout.map(f=>f.i)})}</div>`;
+  if(fout.length)html+=`<div class="banner rood" style="margin-top:0"><div class="grow">${fout.map(f=>esc(f.txt)).join(' ')}</div></div>`;
+  html+=`<p class="hint" style="text-align:center;margin-top:0">${leeg?`Nog ${leeg} ${leeg===1?'positie':'posities'} leeg. Tik op een positie of op een speler op de bank.`:'Alle posities zijn gevuld. Tik op een positie om te ruilen.'}</p>`;
+  html+=`<div class="card"><h2>Bank (${bank.length})</h2>${bank.length?`<div class="tagrow">${bank.map(p=>`<button class="tag" onclick="bankTik('${w.id}','${p.id}')"><span class="avatar ${p.keeper?'k':''}" style="width:24px;height:24px;font-size:12px;margin:-3px 0">${p.nummer||initials(p.naam)}</span>${esc(p.naam)}</button>`).join('')}</div><p class="hint" style="margin-bottom:0">Tik op een speler om te kiezen waar die komt te staan.</p>`:'<p class="muted small" style="margin:0">Iedereen die aanwezig is staat opgesteld.</p>'}</div>`;
+  if(!w._scenario)html+=`<button class="btn wide ${leeg?'sec':''}" onclick="wsub='wissels';render()">Volgende: wisselschema ${I.chev}</button>`;
   return html;
 }
-function aanwezigKaart(w,t){
-  if(w._scenario)return '';
-  const open=w._aanwOpen;
-  return `<div class="card"><button class="row between" style="width:100%;text-align:left" onclick="wed('${w.id}')._aanwOpen=!${!!open};render()"><h2 style="margin:0">Aanwezig ${w.aanwezig.length} van ${t.spelers.length}</h2><span class="chev" style="transform:rotate(${open?90:0}deg);display:inline-block">${I.chev}</span></button>
-  ${open?`<div class="list mt">${t.spelers.map(p=>`<button class="item" onclick="toggleAanwezig('${w.id}','${p.id}')"><span class="check ${w.aanwezig.includes(p.id)?'on':''}">${I.check}</span><div class="txt"><div class="t" style="font-size:16px;${w.aanwezig.includes(p.id)?'':'color:var(--ink-3)'}">${esc(p.naam)}</div></div>${p.keeper?'<span class="pill">keeper</span>':''}</button>`).join('')}</div>`:''}</div>`;
+function aanwezigSheet(wid){
+  const w=wed(wid);const t=team();
+  sheet(`<h2>Wie is er bij?</h2><p class="muted small">Afwezige spelers vallen uit de opstelling en het wisselschema.</p>
+  <div class="list mt">${t.spelers.map(p=>`<button class="item" onclick="toggleAanwezig('${w.id}','${p.id}',true)"><span class="check ${w.aanwezig.includes(p.id)?'on':''}">${I.check}</span><div class="txt"><div class="t" style="font-size:16px;${w.aanwezig.includes(p.id)?'':'color:var(--ink-3)'}">${esc(p.naam)}</div></div>${p.keeper?'<span class="pill">keeper</span>':''}</button>`).join('')}</div>
+  <button class="btn wide mt" onclick="closeSheet()">Klaar, ${w.aanwezig.length} aanwezig</button>`);
 }
-function toggleAanwezig(wid,pid){
+function aanvoerderSheet(wid){
+  const w=wed(wid);const t=team();
+  const sp=t.spelers.filter(p=>w.aanwezig.includes(p.id)).sort((a,b)=>a.naam.localeCompare(b.naam));
+  sheet(`<h2>Aanvoerder</h2><p class="muted small">Voor deze wedstrijd. De aanvoerder krijgt een C op het veld en op de afbeelding.</p>
+  <div class="list mt">${w.aanvoerder?`<button class="item" onclick="zetAanvoerder('${wid}',null)"><span class="avatar off">×</span><div class="txt"><div class="t">Geen aanvoerder</div></div></button>`:''}
+  ${sp.map(p=>`<button class="item" onclick="zetAanvoerder('${wid}','${p.id}')"><span class="avatar ${p.keeper?'k':''}">${p.nummer||initials(p.naam)}</span><div class="txt"><div class="t">${esc(p.naam)}</div>${t.aanvoerder===p.id?'<div class="d">standaard aanvoerder van dit team</div>':''}</div>${w.aanvoerder===p.id?`<span class="check on">${I.check}</span>`:''}</button>`).join('')}</div>
+  ${w.aanvoerder&&t.aanvoerder!==w.aanvoerder?`<button class="btn ghost wide mt" onclick="team().aanvoerder='${w.aanvoerder}';save();toast(kort(team(),'${w.aanvoerder}')+' is nu standaard aanvoerder');closeSheet()">${esc(kort(t,w.aanvoerder))} standaard maken voor nieuwe wedstrijden</button>`:''}`);
+}
+function zetAanvoerder(wid,pid){const w=wed(wid);w.aanvoerder=pid;save();closeSheet();render()}
+function bankTik(wid,pid){
+  const w=wed(wid);const t=team();const p=speler(t,pid);
+  const pos=w.opstelling.posities.map((q,i)=>({q,i})).sort((a,b)=>(a.q.spelerId?1:0)-(b.q.spelerId?1:0)||(kanSpelen(p,b.q.naam)?1:0)-(kanSpelen(p,a.q.naam)?1:0));
+  sheet(`<h2>Waar komt ${esc(kort(t,pid))}?</h2>
+  <div class="list mt">${pos.map(({q,i})=>`<button class="item" onclick="zetSpeler('${wid}',${i},'${pid}')"><span class="avatar ${q.spelerId?'':'off'}" style="font-size:12px">${esc(famCode(q.naam))}</span><div class="txt"><div class="t" style="font-size:16px">${esc(q.naam)}</div><div class="d">${q.spelerId?'nu '+esc(naam(t,q.spelerId))+', gaat naar de bank':'leeg'}${p.voorkeur===famVan(q.naam)?', voorkeur':(kanSpelen(p,q.naam)&&(p.speelbaar||[]).length?', kan hier':'')}</div></div></button>`).join('')}</div>`);
+}
+function toggleAanwezig(wid,pid,inSheet){
   const w=wed(wid);const i=w.aanwezig.indexOf(pid);
-  if(i>=0){w.aanwezig.splice(i,1);if(w.opstelling)w.opstelling.posities.forEach(p=>{if(p.spelerId===pid)p.spelerId=null});(w.lijnen||[]).forEach(l=>{l.wissels=(l.wissels||[]).filter(x=>x!==pid);l.events=null})}
+  if(i>=0){w.aanwezig.splice(i,1);if(w.aanvoerder===pid)w.aanvoerder=null;if(w.opstelling)w.opstelling.posities.forEach(p=>{if(p.spelerId===pid)p.spelerId=null});(w.lijnen||[]).forEach(l=>{l.wissels=(l.wissels||[]).filter(x=>x!==pid);l.events=null})}
   else w.aanwezig.push(pid);
-  save();render();
+  save();render();if(inSheet)aanwezigSheet(wid);
 }
 function kiesSysteem(wid,sid){
   const w=wed(wid);const t=team();const s=alleSystemen(t.format).find(x=>x.id===sid);if(!s)return;
@@ -736,6 +855,7 @@ function genEvents(w,t,l){
     if(q.due>D-2)break;
     const m=Math.round(q.due);
     let leeg=on.find(o=>!o.speler);let out=null;
+    // wie eruit gaat: wie het langst in het veld staat. Iedereen in de lijn komt aan de beurt.
     if(!leeg){const kand=on.filter(o=>o.speler);out=kand[0];kand.forEach(o=>{if(since[o.speler]<since[out.speler])out=o});}
     const uitId=out?out.speler:null;
     const huidig={};on.forEach(o=>{if(o.speler&&o.speler!==uitId)huidig[o.speler]=o.pos});
@@ -744,8 +864,9 @@ function genEvents(w,t,l){
     let toew=slots.length===spelers.length?verdeel(slots,spelers,huidig,mag):null;
     let draai=[];let posIn;
     if(toew){slots.forEach((pos,i)=>{const pid=toew[i];if(pid===q.id)posIn=pos;else if(huidig[pid]&&huidig[pid]!==pos)draai.push({spelerId:pid,van:huidig[pid],naar:pos})});on.forEach((o,i)=>o.speler=toew[i])}
-    else{const slot=out||leeg;posIn=slot.pos;slot.speler=q.id}
-    ev.push({minuut:m,uitId,inId:q.id,posId:posIn,bank:B(q.id),draai});
+    let conflict=false;
+    if(!toew){const slot=out||leeg;posIn=slot.pos;slot.speler=q.id;conflict=!mag(q.id).includes(posIn)}
+    ev.push({minuut:m,uitId,inId:q.id,posId:posIn,bank:B(q.id),draai,conflict});
     since[q.id]=q.due;
     if(uitId){delete since[uitId];queue.push({id:uitId,due:q.due+Math.max(1,B(uitId))})}
   }
@@ -756,6 +877,23 @@ function lijnMag(w,t,l,pid){
   if(l.toegestaan[pid]&&l.toegestaan[pid].length)return l.toegestaan[pid].filter(x=>l.posities.includes(x));
   const p=speler(t,pid);const res=l.posities.filter(pid2=>{const q=w.opstelling.posities.find(x=>x.id===pid2);return q&&kanSpelen(p,q.naam)});
   return res.length?res:l.posities.slice();
+}
+function lijnProblemen(w,t,l){
+  const out=[];if(!w.opstelling)return out;
+  const posNaam=pid=>{const q=w.opstelling.posities.find(x=>x.id===pid);return q?famCode(q.naam):'?'};
+  const magTxt=id=>lijnMag(w,t,l,id).map(posNaam).join(' of ');
+  l.posities.forEach(pid=>{const q=w.opstelling.posities.find(x=>x.id===pid);if(!q||!q.spelerId)return;if(!lijnMag(w,t,l,q.spelerId).includes(pid))out.push(`Bij de start staat ${kort(t,q.spelerId)} op ${posNaam(pid)}, maar ${kort(t,q.spelerId)} mag alleen op ${magTxt(q.spelerId)}.`)});
+  const gezien=new Set();(l.events||[]).forEach(e=>{if(!e.conflict)return;const k=e.inId+'|'+e.uitId;if(gezien.has(k))return;gezien.add(k);
+    const uitPos=e.uitId?posNaam(e.posId):null;
+    out.push(`Na ${e.minuut} min gaat ${e.uitId?kort(t,e.uitId)+' ('+uitPos+')':'niemand'} eruit en komt ${kort(t,e.inId)} erin. ${kort(t,e.inId)} moet dan op ${posNaam(e.posId)}, maar mag alleen op ${magTxt(e.inId)}, en niemand anders in het veld kan naar ${posNaam(e.posId)} schuiven.`)});
+  return out;
+}
+function lijnOplossing(w,t,l){
+  const posNaam=pid=>{const q=w.opstelling.posities.find(x=>x.id===pid);return q?famCode(q.naam):'?'};
+  const vast={};lijnSpelers(w,l).forEach(id=>{const m=lijnMag(w,t,l,id);if(m.length===1&&l.posities.length>1)vast[m[0]]=(vast[m[0]]||[]).concat(id)});
+  const dubbel=Object.keys(vast).filter(pos=>vast[pos].length>1);
+  if(dubbel.length)return dubbel.map(pos=>`${vast[pos].map(id=>kort(t,id)).join(' en ')} mogen allebei alleen op ${posNaam(pos)}. Geef een van hen bij "wie mag waar" een positie erbij, of zet een van hen in een andere lijn.`).join(' ');
+  return 'Geef bij "wie mag waar" iemand in deze lijn een positie erbij, of verdeel de posities anders over de lijnen.';
 }
 function lijnSpelers(w,l){const veld=l.posities.map(pid=>{const q=w.opstelling.posities.find(x=>x.id===pid);return q?q.spelerId:null}).filter(Boolean);return veld.concat(l.wissels||[])}
 function alleEvents(w){return (w.lijnen||[]).flatMap(l=>(l.events||[]).map(e=>Object.assign({lijn:l},e))).sort((a,b)=>a.minuut-b.minuut)}
@@ -792,7 +930,7 @@ function wedWissels(w,t){
     if(l.events.length){
       const nodes=[];const node=(id,bank)=>{const mag=lijnMag(w,t,l,id);const isVast=mag.length===1&&l.posities.length>1;const ptxt=isVast?`<span class="p vast">${esc(posNaam(mag[0]))}</span>`:(mag.length>=l.posities.length?`<span class="p">overal</span>`:`<span class="p">${mag.map(posNaam).map(esc).join(', ')}</span>`);
         return `<button class="node ${bank?'bank':''} ${uitz.includes(id)?'uitz':''}" onclick="startSheet('${w.id}','${l.id}','${id}')"><span class="t">${BK[id]}</span><b>${esc(kort(t,id))}</b>${ptxt}</button>`};
-      const arr=e=>`<button class="arr" onclick="bankSheet('${w.id}','${l.id}','${e.inId}')"><svg viewBox="0 0 26 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8h21M17 3l6 5-6 5"/></svg>${(e.draai||[]).length?`<small class="draai">${e.draai.map(d=>esc(kort(t,d.spelerId))+'&rarr;'+esc(posNaam(d.naar))).join('<br>')}</small>`:''}</button>`;
+      const arr=e=>`<button class="arr ${e.conflict?'conflict':''}" onclick="bankSheet('${w.id}','${l.id}','${e.inId}')"><svg viewBox="0 0 26 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8h21M17 3l6 5-6 5"/></svg>${(e.draai||[]).length?`<small class="draai">${e.draai.map(d=>esc(kort(t,d.spelerId))+'&rarr;'+esc(posNaam(d.naar))).join('<br>')}</small>`:''}</button>`;
       let prev=null;let n=0;
       for(const e of l.events){if(n>=P)break;
         if(prev!==e.inId){if(nodes.length)nodes.push('<span style="width:100%"></span>');nodes.push(node(e.inId,true));n++}
@@ -800,12 +938,14 @@ function wedWissels(w,t){
       keten=`<div class="chain">${nodes.join('')}${l.events.length>P-1?'<span class="rest">daarna opnieuw van voren</span>':''}</div>`;
     }
     const posCodes=l.posities.map(pid=>{const q=w.opstelling.posities.find(x=>x.id===pid);return q?famCode(q.naam):'?'});
-    html+=`<div class="line-card"><div class="hd"><b>${esc(l.naam)}<span class="muted" style="font-weight:600;font-size:14px;margin-left:8px">${posCodes.map(esc).join(' · ')}</span></b>${l.events.length?`<span class="pill">${gelijk?'wisselen na '+vals[0]+' min':'na '+l.bankStd+' min, '+uitz.length+' uitz.'}</span>`:''}<button class="iconbtn" style="width:32px;height:32px;box-shadow:none;background:var(--bg)" onclick="bewerkLijn('${w.id}','${l.id}')">${I.more}</button></div>
+    const prob=lijnProblemen(w,t,l);
+    html+=`<div class="line-card" ${prob.length?'style="border-color:#f0c2c2"':''}><div class="hd"><b>${esc(l.naam)}<span class="muted" style="font-weight:600;font-size:14px;margin-left:8px">${posCodes.map(esc).join(' · ')}</span></b>${prob.length?`<span class="pill rood">klopt niet</span>`:(l.events.length?`<span class="pill">${gelijk?'wisselen na '+vals[0]+' min':'na '+l.bankStd+' min, '+uitz.length+' uitz.'}</span>`:'')}<button class="iconbtn" style="width:32px;height:32px;box-shadow:none;background:var(--bg)" onclick="bewerkLijn('${w.id}','${l.id}')">${I.more}</button></div>
+    ${prob.length?`<div class="banner rood" style="margin:0 0 6px;flex-direction:column;align-items:stretch"><div><b>Dit schema klopt niet.</b> ${prob.slice(0,2).map(esc).join(' ')}</div><div><b>Oplossing:</b> ${esc(lijnOplossing(w,t,l))}</div><button class="btn sm ghost" style="align-self:flex-start" onclick="bewerkLijn('${w.id}','${l.id}')">Lijn aanpassen</button></div>`:''}
     ${keten||`<p class="hint">Kies posities en een wissel via de knop rechtsboven.</p>`}</div>`;
   });
   const ev=alleEvents(w);
   if(ev.length){
-    html+=`<div class="card"><button class="row between" style="width:100%;text-align:left" onclick="wed('${w.id}')._schemaOpen=!${!!w._schemaOpen};render()"><h2 style="margin:0">Volledig schema</h2><span class="chev" style="transform:rotate(${w._schemaOpen?90:0}deg);display:inline-block">${I.chev}</span></button>${w._schemaOpen?`<div class="list mt">${ev.map(e=>{const p=w.opstelling.posities.find(q=>q.id===e.posId);return `<div class="wl"><div class="min">${e.minuut}'</div><div class="who"><b>${esc(naam(t,e.inId))}</b> voor <b>${e.uitId?esc(naam(t,e.uitId)):'leeg'}</b><div class="pos-lbl">${p?esc(p.naam):''}, ${esc(e.lijn.naam)}${(e.draai||[]).length?'. Draaien: '+e.draai.map(d=>esc(kort(t,d.spelerId))+' naar '+esc(famCode((w.opstelling.posities.find(x=>x.id===d.naar)||{naam:'?'}).naam))).join(', '):''}</div></div><span></span></div>`}).join('')}</div>`:''}</div>`;
+    html+=`<div class="card"><button class="row between" style="width:100%;text-align:left" onclick="wed('${w.id}')._schemaOpen=!${!!w._schemaOpen};render()"><h2 style="margin:0">Volledig schema</h2><span class="chev" style="transform:rotate(${w._schemaOpen?90:0}deg);display:inline-block">${I.chev}</span></button>${w._schemaOpen?`<div class="list mt">${ev.map(e=>{const p=w.opstelling.posities.find(q=>q.id===e.posId);return `<div class="wl"><div class="min" ${e.conflict?'style="color:var(--danger)"':''}>${e.minuut}'</div><div class="who"><b>${esc(naam(t,e.inId))}</b>${e.conflict?' <span class="pill rood">klopt niet</span>':''} voor <b>${e.uitId?esc(naam(t,e.uitId)):'leeg'}</b><div class="pos-lbl">${p?esc(p.naam):''}, ${esc(e.lijn.naam)}${(e.draai||[]).length?'. Draaien: '+e.draai.map(d=>esc(kort(t,d.spelerId))+' naar '+esc(famCode((w.opstelling.posities.find(x=>x.id===d.naar)||{naam:'?'}).naam))).join(', '):''}</div></div><span></span></div>`}).join('')}</div>`:''}</div>`;
   }
   const tot=speelTijd(w,t);const ids=Object.keys(tot).sort((a,b)=>tot[b]-tot[a]);
   if(ids.length) html+=`<div class="card"><h2>Speeltijd</h2><div class="totals">${ids.map(id=>`<div class="tot"><span>${esc(kort(t,id))}</span><b>${Math.round(tot[id])}'</b></div>`).join('')}</div></div>`;
@@ -870,7 +1010,9 @@ function bewerkLijn(wid,lid){
   const opgesteld=w.opstelling.posities.filter(p=>p.spelerId).map(p=>p.spelerId);
   const bezetW=w.lijnen.filter(x=>x!==l).flatMap(x=>x.wissels||[]);
   const bank=t.spelers.filter(p=>w.aanwezig.includes(p.id)&&!opgesteld.includes(p.id));
+  if(!l.events&&l.posities.length)l.events=genEvents(w,t,l);const prob=lijnProblemen(w,t,l);
   sheet(`<div class="row between"><h2>${esc(l.naam)}</h2><button class="btn sm danger" onclick="closeSheet();verwijderLijn('${wid}','${lid}')">Verwijderen</button></div>
+  ${prob.length?`<div class="banner rood" style="flex-direction:column;align-items:stretch"><div><b>Dit schema klopt niet.</b> ${prob.slice(0,2).map(esc).join(' ')}</div><div><b>Oplossing:</b> ${esc(lijnOplossing(w,t,l))}</div></div>`:''}
   <label class="field-lbl">Naam</label><input class="inp" value="${esc(l.naam)}" onchange="lijnVeld('${wid}','${lid}','naam',this.value)">
   <label class="field-lbl">Posities die in deze lijn doorwisselen</label><div class="tagrow">${w.opstelling.posities.map(p=>{const inL=l.posities.includes(p.id);const elders=bezet.includes(p.id);return `<button class="tag ${inL?'on':''}" ${elders?'disabled style="opacity:.35"':''} onclick="lijnToggle('${wid}','${lid}','posities','${p.id}')">${esc(p.naam)}${p.spelerId?' ('+esc(kort(t,p.spelerId))+')':''}</button>`}).join('')}</div>
   <label class="field-lbl">Wissels op de bank voor deze lijn</label><div class="tagrow">${bank.length?bank.map(p=>{const inL=(l.wissels||[]).includes(p.id);const elders=bezetW.includes(p.id);return `<button class="tag ${inL?'on':''}" ${elders?'disabled style="opacity:.35"':''} onclick="lijnToggle('${wid}','${lid}','wissels','${p.id}')">${esc(p.naam)}</button>`}).join(''):'<span class="muted small">Niemand op de bank.</span>'}</div>
@@ -881,7 +1023,7 @@ function bewerkLijn(wid,lid){
 function lijnMagToggle(wid,lid,pid,pos){const w=wed(wid);const l=w.lijnen.find(x=>x.id===lid);const cur=lijnMag(w,team(),l,pid).slice();const i=cur.indexOf(pos);if(i>=0){if(cur.length===1){toast('Minstens één positie');return}cur.splice(i,1)}else cur.push(pos);l.toegestaan=l.toegestaan||{};l.toegestaan[pid]=cur;l.events=null;save();bewerkLijn(wid,lid)}
 function lijnVeld(wid,lid,k,v){const l=wed(wid).lijnen.find(x=>x.id===lid);l[k]=k==='interval'?Math.max(1,parseInt(v)||8):v;l.events=null;save()}
 function lijnToggle(wid,lid,k,id){const l=wed(wid).lijnen.find(x=>x.id===lid);l[k]=l[k]||[];const i=l[k].indexOf(id);if(i>=0)l[k].splice(i,1);else l[k].push(id);if(k==='posities')l.toegestaan={};l.bank={};l.events=null;save();bewerkLijn(wid,lid)}
-function verwijderLijn(wid,lid){const w=wed(wid);w.lijnen=w.lijnen.filter(x=>x.id!==lid);save();render()}
+function verwijderLijn(wid,lid){const w=wed(wid);const h=momentopname();const l=w.lijnen.find(x=>x.id===lid);w.lijnen=w.lijnen.filter(x=>x.id!==lid);save();render();verwijderdToast(l?l.naam:'Lijn',h)}
 function herbereken(wid,lid){const w=wed(wid);const l=w.lijnen.find(x=>x.id===lid);l.events=genEvents(w,team(),l);save();render()}
 function zetMinuut(wid,lid,ei,v){const l=wed(wid).lijnen.find(x=>x.id===lid);l.events[ei].minuut=Math.max(0,parseInt(v)||0);l.events.sort((a,b)=>a.minuut-b.minuut);save();render()}
 function verwijderEvent(wid,lid,ei){const l=wed(wid).lijnen.find(x=>x.id===lid);l.events.splice(ei,1);save();render()}
@@ -904,7 +1046,7 @@ function wedDoelen(w,t){
 }
 function voegSub(wid,i,v){v=(v||'').trim();if(!v)return;const d=wed(wid).doelen[i];d.sub=d.sub||[];d.sub.push({tekst:v,behaald:false});save();render()}
 function toggleSub(wid,i,j){const d=wed(wid).doelen[i];const sd=d.sub[j];sd.behaald=!sd.behaald;if(d.sub.length&&d.sub.every(x=>x.behaald))d.behaald=true;save();render()}
-function verwijderDoel(wid,i){const d=wed(wid).doelen[i];if((d.sub||[]).length){confirmSheet('Doel verwijderen?',`"${d.tekst}" met ${d.sub.length} subdoelen.`,'Verwijderen',()=>{wed(wid).doelen.splice(i,1);save();render()},true)}else{wed(wid).doelen.splice(i,1);save();render()}}
+function verwijderDoel(wid,i){const d=wed(wid).doelen[i];const doe=()=>{const h=momentopname();wed(wid).doelen.splice(i,1);save();render();verwijderdToast('Doel',h)};if((d.sub||[]).length){confirmSheet('Doel verwijderen?',`"${d.tekst}" met ${d.sub.length} subdoelen.`,'Verwijderen',doe,true)}else doe()}
 function voegDoel(wid){const v=val('nieuwdoel').trim();if(!v)return;wed(wid).doelen.push({id:uid(),tekst:v,behaald:false,sub:[]});save();render();setTimeout(()=>{const e=document.getElementById('nieuwdoel');if(e)e.focus()},50)}
 function toggleDoel(wid,i){const d=wed(wid).doelen[i];d.behaald=!d.behaald;save();render()}
 /* --- info --- */
@@ -918,15 +1060,17 @@ function wedInfo(w,t){
 }
 /* ===================== TEAM ===================== */
 function nieuwTeam(){
-  sheet(`<h2>Nieuw team</h2><label class="field-lbl">Naam</label><input class="inp" id="nt_naam" placeholder="Bijv. Alliance MO12-1">
+  sheet(`<h2>Nieuw team</h2><label class="field-lbl">Naam</label><input class="inp" id="nt_naam" placeholder="Bijv. Rotterdam Heren 1">
+  <label class="field-lbl">Dames of heren</label><div class="seg" id="nt_g"><button onclick="segSel(this)" data-v="dames">Dames</button><button onclick="segSel(this)" data-v="heren">Heren</button></div>
   <label class="field-lbl">Categorie</label><select class="inp" id="nt_cat">${CATS.map(c=>`<option value="${c}">${c}, ${FORMATS[CAT_FORMAT[c]].label}</option>`).join('')}</select>
   <label class="field-lbl">Shirtkleur</label><div class="swatches" id="nt_kl">${KLEUREN.map((k,i)=>`<button class="sw ${i===5?'on':''}" style="background:${k}" data-k="${k}" onclick="swSel(this)" aria-label="${k}"></button>`).join('')}</div>
-  <button class="btn wide mt" onclick="bewaarNieuwTeam()">Team aanmaken</button>`,{focus:'#nt_naam'});
+  <div class="btnrow mt"><button class="btn ghost" onclick="closeSheet()">Annuleren</button><button class="btn" onclick="bewaarNieuwTeam()">Team aanmaken</button></div>`,{focus:'#nt_naam'});
 }
 function swSel(b){b.parentNode.querySelectorAll('.sw').forEach(x=>x.classList.remove('on'));b.classList.add('on')}
 function bewaarNieuwTeam(){
   const cat=val('nt_cat');const k=document.querySelector('#nt_kl .sw.on').dataset.k;const f=CAT_FORMAT[cat];
-  const t={id:uid(),naam:val('nt_naam').trim()||cat,categorie:cat,format:f,goals:3,duur:FORMATS[f].duur,tenue:defaultTenue(k),uitTenue:{shirt:'#ffffff',shirt2:k,patroon:'effen',broek:'#ffffff',sokken:'#ffffff'},spelers:[]};
+  if(!segVal('nt_g')){toast('Kies dames of heren');return}
+  const t={id:uid(),naam:val('nt_naam').trim()||cat,geslacht:segVal('nt_g'),categorie:cat,format:f,goals:3,duur:FORMATS[f].duur,tenue:defaultTenue(k),uitTenue:{shirt:'#ffffff',shirt2:k,patroon:'effen',broek:'#ffffff',sokken:'#ffffff'},spelers:[]};
   S.teams.push(t);S.instellingen.actiefTeam=t.id;save();closeSheet();tabTo('team');
 }
 let tsub='spelers';
@@ -935,7 +1079,7 @@ PAGES.team=()=>{
   const subs=[['spelers','Spelers'],['tenue','Tenue'],['instellingen','Instellingen']];
   let body=`<div class="subtabs">${subs.map(([k,l])=>`<button class="${tsub===k?'on':''}" onclick="tsub='${k}';render()">${l}</button>`).join('')}</div>`;
   body+={spelers:teamSpelers,tenue:teamTenue,instellingen:teamInstellingen}[tsub](t);
-  return topbar(esc(t.naam),t.categorie+', '+FORMATS[t.format].label,`<button class="btn sm ghost" onclick="teamKiezer()">Wissel team</button>`)+`<div class="main">${body}</div>`;
+  return topbar(esc(t.naam),geslachtLabel(t)+', '+t.categorie+', '+FORMATS[t.format].label,`<button class="btn sm ghost" onclick="go('start')">Wissel team</button>`)+`<div class="main">${body}</div>`;
 };
 function teamSpelers(t){
   const sp=t.spelers.slice().sort((a,b)=>(a.nummer||99)-(b.nummer||99)||a.naam.localeCompare(b.naam));
@@ -949,7 +1093,7 @@ function nieuweSpeler(){
   sheet(`<h2>Nieuwe speler</h2><label class="field-lbl">Naam</label><input class="inp" id="ns_naam"><div class="grid2"><div><label class="field-lbl">Rugnummer</label><input class="inp" type="number" inputmode="numeric" id="ns_nr"></div><div><label class="field-lbl">Keeper</label><div class="seg" id="ns_k"><button class="on" onclick="segSel(this)" data-v="0">Nee</button><button onclick="segSel(this)" data-v="1">Ja</button></div></div></div>
   <label class="field-lbl">Voorkeurspositie</label>${famChips('ns_vk',[],false,team())}
   <label class="field-lbl">Kan ook spelen op</label>${famChips('ns_sb',[],true,team())}
-  <button class="btn wide mt" onclick="bewaarSpeler(true)">Toevoegen en nog een</button><button class="btn sec wide mt" onclick="bewaarSpeler(false)">Toevoegen</button>`,{focus:'#ns_naam'});
+  <button class="btn wide mt" onclick="bewaarSpeler(true)">Toevoegen en nog een</button><button class="btn sec wide mt" onclick="bewaarSpeler(false)">Toevoegen</button><button class="btn ghost wide mt" onclick="closeSheet()">Annuleren</button>`,{focus:'#ns_naam'});
 }
 function bewaarSpeler(nog){
   const t=team();const n=val('ns_naam').trim();if(!n){toast('Vul een naam in');return}
@@ -969,23 +1113,33 @@ PAGES.speler=()=>{
   p.leerdoelen=p.leerdoelen||[];
   const sz=S.instellingen.seizoen;const ws=S.wedstrijden.filter(w=>w.teamId===t.id&&w.seizoen===sz&&w.opstelling);
   let min=0,aantal=0;ws.forEach(w=>{const tot=speelTijd(w,t);if(w.aanwezig.includes(p.id)){aantal++;min+=tot[p.id]||0}});
-  let html=`<div class="card"><label class="field-lbl">Naam</label><input class="inp" value="${esc(p.naam)}" onchange="spVeld('${p.id}','naam',this.value)">
-  <div class="grid2"><div><label class="field-lbl">Rugnummer</label><input class="inp" type="number" inputmode="numeric" value="${p.nummer}" onchange="spVeld('${p.id}','nummer',this.value?+this.value:'')"></div><div><label class="field-lbl">Keeper</label><div class="seg"><button class="${!p.keeper?'on':''}" onclick="spVeld('${p.id}','keeper',false)">Nee</button><button class="${p.keeper?'on':''}" onclick="spVeld('${p.id}','keeper',true)">Ja</button></div></div></div>
-  <label class="field-lbl">Voorkeurspositie</label>${famChips('sp_vk',p.voorkeur?[p.voorkeur]:[],false,t,`spVeld('${p.id}','voorkeur',chipVal('sp_vk')[0]||'')`)}
+  let html=`<div class="card"><label class="field-lbl">Naam</label><input class="inp" id="sp_naam" value="${esc(p.naam)}" onchange="spVeld('${p.id}','naam',this.value)">
+  <div class="grid2"><div><label class="field-lbl">Rugnummer</label><input class="inp" type="number" inputmode="numeric" id="sp_nr" value="${p.nummer}" onchange="spVeld('${p.id}','nummer',this.value?+this.value:'')"></div><div><label class="field-lbl">Keeper</label><div class="seg" id="sp_k"><button class="${!p.keeper?'on':''}" data-v="0" onclick="segSel(this);spVeld('${p.id}','keeper',false)">Nee</button><button class="${p.keeper?'on':''}" data-v="1" onclick="segSel(this);spVeld('${p.id}','keeper',true)">Ja</button></div></div></div>
+  <label class="field-lbl">Voorkeurspositie</label>${famChips('sp_vk',p.voorkeur?[p.voorkeur]:[],false,t,`spVeld('${p.id}','voorkeur',chipVal('sp_vk')[0]||'');spVeld('${p.id}','speelbaar',chipVal('sp_sb'))`)}
   <label class="field-lbl">Kan ook spelen op</label>${famChips('sp_sb',p.speelbaar||[],true,t,`spVeld('${p.id}','speelbaar',chipVal('sp_sb'))`)}
-  <label class="field-lbl">Notities</label><textarea class="inp" onchange="spVeld('${p.id}','notities',this.value)">${esc(p.notities||'')}</textarea></div>`;
+  <label class="field-lbl">Notities</label><textarea class="inp" id="sp_not" onchange="spVeld('${p.id}','notities',this.value)">${esc(p.notities||'')}</textarea>
+  <button class="btn wide mt" onclick="bewaarSpelerPagina('${p.id}')">${I.check} Opslaan</button></div>`;
   html+=`<div class="card"><h2>Seizoen ${sz}</h2><div class="kv"><span>Wedstrijden aanwezig</span><b>${aantal} van ${ws.length}</b></div><div class="kv"><span>Speelminuten</span><b>${Math.round(min)}</b></div><div class="kv"><span>Gemiddeld per wedstrijd</span><b>${aantal?Math.round(min/aantal):0} min</b></div></div>`;
   html+=`<div class="card"><h2>Leerdoelen</h2>${p.leerdoelen.map((d,i)=>`<div class="line-card"><div class="hd"><input class="inp" style="flex:1" value="${esc(d.tekst)}" onchange="team().spelers.find(x=>x.id==='${p.id}').leerdoelen[${i}].tekst=this.value;save()"><button class="check ${d.behaald?'on':''}" onclick="const d=team().spelers.find(x=>x.id==='${p.id}').leerdoelen[${i}];d.behaald=!d.behaald;save();render()" aria-label="Behaald">${I.check}</button><button class="iconbtn" style="width:30px;height:30px;box-shadow:none;color:var(--ink-3)" onclick="team().spelers.find(x=>x.id==='${p.id}').leerdoelen.splice(${i},1);save();render()">${I.trash}</button></div>
     ${(d.notities||[]).map((n,ni)=>`<div class="small" style="padding:4px 0;border-top:1px solid var(--line)"><span class="muted">${fmtDatum(n.datum)}</span> ${esc(n.tekst)}</div>`).join('')}
     <div class="row mt"><input class="inp grow" placeholder="Notitie na wedstrijd of training" onkeydown="if(event.key==='Enter'){voegLdNotitie('${p.id}',${i},this.value);this.value=''}"><button class="btn sm ghost" onclick="const i=this.previousElementSibling;voegLdNotitie('${p.id}',${i},i.value);i.value=''">Bewaar</button></div></div>`).join('')}
   <div class="row mt"><input class="inp grow" id="nieuwld" placeholder="Nieuw leerdoel" onkeydown="if(event.key==='Enter')voegLeerdoel('${p.id}')"><button class="btn" onclick="voegLeerdoel('${p.id}')">Voeg toe</button></div></div>`;
   html+=`<button class="btn danger wide" onclick="verwijderSpeler('${p.id}')">Speler verwijderen</button>`;
-  return topbar(esc(p.naam),t.naam,'',true)+`<div class="main">${html}</div>`;
+  return topbar(esc(p.naam),t.naam,`<button class="btn sm" onclick="bewaarSpelerPagina('${p.id}')">Opslaan</button>`,true)+`<div class="main">${html}</div>`;
 };
-function spVeld(id,k,v){const p=speler(team(),id);p[k]=v;save();if(k==='keeper')render()}
+function spVeld(id,k,v){const p=speler(team(),id);p[k]=v;save()}
+function bewaarSpelerPagina(id){
+  const p=speler(team(),id);if(!p)return;
+  const n=val('sp_naam').trim();if(!n){toast('Vul een naam in');return}
+  p.naam=n;p.nummer=val('sp_nr')?+val('sp_nr'):'';p.keeper=segVal('sp_k')==='1';
+  p.voorkeur=chipVal('sp_vk')[0]||'';p.speelbaar=chipVal('sp_sb');if(p.voorkeur&&!p.speelbaar.includes(p.voorkeur))p.speelbaar.unshift(p.voorkeur);
+  if(p.voorkeur==='K')p.keeper=true;
+  p.notities=val('sp_not');
+  save();toast(p.naam+' opgeslagen');back();
+}
 function voegLeerdoel(id){const v=val('nieuwld').trim();if(!v)return;speler(team(),id).leerdoelen.push({tekst:v,behaald:false,notities:[]});save();render()}
 function voegLdNotitie(id,i,v){v=(v||'').trim();if(!v)return;const d=speler(team(),id).leerdoelen[i];d.notities=d.notities||[];d.notities.push({datum:new Date().toISOString().slice(0,10),tekst:v});save();render()}
-function verwijderSpeler(id){confirmSheet('Speler verwijderen?','De speler wordt ook uit alle opstellingen en wisselschema\'s van dit team gehaald.','Verwijderen',()=>{const t=team();t.spelers=t.spelers.filter(p=>p.id!==id);S.wedstrijden.filter(w=>w.teamId===t.id).forEach(w=>{w.aanwezig=w.aanwezig.filter(x=>x!==id);if(w.opstelling)w.opstelling.posities.forEach(p=>{if(p.spelerId===id)p.spelerId=null});(w.lijnen||[]).forEach(l=>{l.wissels=(l.wissels||[]).filter(x=>x!==id);l.events=null})});save();back()},true)}
+function verwijderSpeler(id){confirmSheet('Speler verwijderen?','De speler wordt ook uit alle opstellingen en wisselschema\'s van dit team gehaald.','Verwijderen',()=>{const t=team();const h=momentopname();const nm=naam(t,id);t.spelers=t.spelers.filter(p=>p.id!==id);S.wedstrijden.filter(w=>w.teamId===t.id).forEach(w=>{w.aanwezig=w.aanwezig.filter(x=>x!==id);if(w.opstelling)w.opstelling.posities.forEach(p=>{if(p.spelerId===id)p.spelerId=null});(w.lijnen||[]).forEach(l=>{l.wissels=(l.wissels||[]).filter(x=>x!==id);l.events=null})});save();back();verwijderdToast(nm,h)},true)}
 /* --- tenue --- */
 let tenueKant='tenue';
 function teamTenue(t){
@@ -1004,16 +1158,17 @@ function tenueVeld(k,v){team()[tenueKant][k]=v;save();render()}
 /* --- instellingen --- */
 function teamInstellingen(t){
   return `<div class="card"><label class="field-lbl">Teamnaam</label><input class="inp" value="${esc(t.naam)}" onchange="team().naam=this.value;save();render()">
+  <label class="field-lbl">Dames of heren</label><div class="seg"><button class="${t.geslacht!=='heren'?'on':''}" onclick="zetGeslacht('dames')">Dames</button><button class="${t.geslacht==='heren'?'on':''}" onclick="zetGeslacht('heren')">Heren</button></div><p class="hint">Bepaalt de naam van de laatste verdediger: laatste vrouw of laatste man.</p>
   <label class="field-lbl">Categorie</label><select class="inp" onchange="zetCategorie(this.value)">${CATS.map(c=>`<option value="${c}" ${t.categorie===c?'selected':''}>${c}</option>`).join('')}</select>
   <label class="field-lbl">Speelformat</label><select class="inp" onchange="team().format=this.value;team().duur=FORMATS[this.value].duur;save();render()">${Object.keys(FORMATS).map(f=>`<option value="${f}" ${t.format===f?'selected':''}>${FORMATS[f].label}</option>`).join('')}</select>
   ${t.format==='3v3'?`<label class="field-lbl">Doeltjes per kant</label><div class="seg"><button class="${t.goals===2?'on':''}" onclick="team().goals=2;save();render()">2 doeltjes</button><button class="${t.goals!==2?'on':''}" onclick="team().goals=3;save();render()">3 doeltjes</button></div>`:''}
   <label class="field-lbl">Wedstrijdduur (minuten, totaal)</label><input class="inp" type="number" inputmode="numeric" value="${t.duur}" onchange="team().duur=Math.max(10,+this.value||50);save()"><p class="hint">Gebruikt om het wisselschema uit te rekenen.</p></div>
   <div class="card"><h3>Standaardopstelling</h3>${t.standaard?`<p class="small muted" style="margin:4px 0 8px">Bewaard op ${new Date(t.standaard.bewaard).toLocaleDateString('nl-NL',{day:'numeric',month:'short'})}: ${esc(t.standaard.opstelling.naam)}, ${(t.standaard.lijnen||[]).length} lijnen. Elke nieuwe wedstrijd start hiermee.</p><button class="btn danger sm" onclick="team().standaard=null;save();render()">Standaard verwijderen</button>`:`<p class="small muted" style="margin:4px 0 0">Nog geen. Open een wedstrijd, tik op de drie puntjes en kies "Opslaan als standaardopstelling".</p>`}</div>
-  <div class="card"><h3>Eigen opstellingen</h3><div class="list mt">${S.eigenSystemen.filter(e=>e.format===t.format).map(e=>`<div class="item"><div class="txt"><div class="t">${esc(e.naam)}</div><div class="d">${e.posities.length} posities</div></div><button class="btn sm ghost" onclick="go('ontwerp',{id:'${e.id}'})">Bewerk</button><button class="iconbtn" style="width:30px;height:30px;box-shadow:none;color:var(--ink-3)" onclick="S.eigenSystemen=S.eigenSystemen.filter(x=>x.id!=='${e.id}');save();render()">${I.trash}</button></div>`).join('')||'<p class="muted small" style="margin:0">Nog geen eigen opstellingen voor dit format.</p>'}</div><button class="btn sec wide mt" onclick="go('ontwerp',{})">${I.plus} Nieuwe opstelling ontwerpen</button></div>
+  <div class="card"><h3>Eigen opstellingen</h3><div class="list mt">${S.eigenSystemen.filter(e=>e.format===t.format).map(e=>`<div class="item"><div class="txt"><div class="t">${esc(e.naam)}</div><div class="d">${e.posities.length} posities</div></div><button class="btn sm ghost" onclick="go('ontwerp',{id:'${e.id}'})">Bewerk</button><button class="iconbtn" style="width:30px;height:30px;box-shadow:none;color:var(--ink-3)" onclick="const h=momentopname();S.eigenSystemen=S.eigenSystemen.filter(x=>x.id!=='${e.id}');save();render();verwijderdToast('Opstelling',h)">${I.trash}</button></div>`).join('')||'<p class="muted small" style="margin:0">Nog geen eigen opstellingen voor dit format.</p>'}</div><button class="btn sec wide mt" onclick="go('ontwerp',{})">${I.plus} Nieuwe opstelling ontwerpen</button></div>
   <button class="btn danger wide" onclick="verwijderTeam()">Team verwijderen</button>`;
 }
 function zetCategorie(c){const t=team();t.categorie=c;t.format=CAT_FORMAT[c];t.duur=FORMATS[t.format].duur;save();render()}
-function verwijderTeam(){const t=team();confirmSheet('Team verwijderen?',`${t.naam} met alle spelers, wedstrijden en trainingen wordt verwijderd. Maak eerst een back-up als je twijfelt.`,'Verwijderen',()=>{S.wedstrijden=S.wedstrijden.filter(w=>w.teamId!==t.id);S.trainingen=S.trainingen.filter(w=>w.teamId!==t.id);S.teams=S.teams.filter(x=>x.id!==t.id);S.instellingen.actiefTeam=S.teams[0]?S.teams[0].id:null;save();render()},true)}
+function verwijderTeam(){const t=team();confirmSheet('Team verwijderen?',`${t.naam} met alle spelers, wedstrijden en trainingen wordt verwijderd. Maak eerst een back-up als je twijfelt.`,'Verwijderen',()=>{const h=momentopname();S.wedstrijden=S.wedstrijden.filter(w=>w.teamId!==t.id);S.trainingen=S.trainingen.filter(w=>w.teamId!==t.id);S.teams=S.teams.filter(x=>x.id!==t.id);S.instellingen.actiefTeam=S.teams[0]?S.teams[0].id:null;save();render();verwijderdToast(t.naam,h)},true)}
 /* ===================== ONTWERP EIGEN OPSTELLING ===================== */
 let ont=null;
 PAGES.ontwerp=()=>{
@@ -1027,17 +1182,36 @@ PAGES.ontwerp=()=>{
   const sel=ont.sel!=null?ont.posities[ont.sel]:null;
   let html=`<div class="card"><label class="field-lbl">Naam van de opstelling</label><input class="inp" value="${esc(ont.naam)}" onchange="ont.naam=this.value"></div>
   <div class="pitch-wrap" data-init="initDrag">${veldSVG(t,ont.posities,{onpos:'ontSel',sel:ont.sel,drag:true,id:'ontveld'})}</div>
-  <p class="drag-hint">Sleep een positie om hem te verplaatsen. ${ont.posities.length} van ${n} posities.</p>
-  ${sel?`<div class="card"><label class="field-lbl">Naam van deze positie</label><div class="row"><input class="inp grow" value="${esc(sel.naam)}" onchange="ont.posities[ont.sel].naam=this.value;render()"><button class="btn sm danger" onclick="ont.posities.splice(ont.sel,1);ont.sel=null;render()">Weg</button></div></div>`:''}
+  <p class="drag-hint">Sleep een positie om hem te verplaatsen; hij klikt vast in kleine stapjes. ${ont.posities.length} van ${n} posities.</p>
+  ${sel?`<div class="card"><label class="field-lbl">Naam van deze positie</label><div class="row"><input class="inp grow" value="${esc(sel.naam)}" onchange="ont.posities[ont.sel].naam=this.value;render()"><button class="btn sm danger" onclick="ont.posities.splice(ont.sel,1);ont.sel=null;render()">Weg</button></div>
+  <label class="field-lbl">Uitlijnen</label><div class="btnrow"><button class="btn sm ghost" onclick="ontSchuif(-1,0)">&larr;</button><button class="btn sm ghost" onclick="ontSchuif(0,1)">&uarr;</button><button class="btn sm ghost" onclick="ontSchuif(0,-1)">&darr;</button><button class="btn sm ghost" onclick="ontSchuif(1,0)">&rarr;</button></div>
+  <div class="btnrow mt"><button class="btn sm ghost" onclick="ontZet(50,null)">Naar het midden</button><button class="btn sm ghost" onclick="ontSpiegel()">Naar de andere kant</button></div></div>`:''}
+  <button class="btn ghost wide mb" onclick="ontSymmetrisch()">Hele opstelling symmetrisch maken</button>
   <div class="btnrow"><button class="btn ghost" onclick="ont.posities.push({naam:'Positie '+(ont.posities.length+1),x:50,y:50});ont.sel=ont.posities.length-1;render()" ${ont.posities.length>=n?'disabled':''}>${I.plus} Positie</button><button class="btn" onclick="bewaarOntwerp()">Opslaan</button></div>`;
   return topbar('Eigen opstelling',FORMATS[t.format].label,'',true)+`<div class="main">${html}</div>`;
 };
 function ontSel(i){ont.sel=ont.sel===i?null:i;render()}
+const RASTER=2.5;
+const snap=v=>Math.round(v/RASTER)*RASTER;
+function ontSchuif(dx,dy){if(ont.sel==null)return;const p=ont.posities[ont.sel];p.x=Math.max(4,Math.min(96,snap(p.x)+dx*RASTER));p.y=Math.max(4,Math.min(96,snap(p.y)+dy*RASTER));render()}
+function ontZet(x,y){if(ont.sel==null)return;const p=ont.posities[ont.sel];if(x!=null)p.x=x;if(y!=null)p.y=y;render()}
+function ontSpiegel(){if(ont.sel==null)return;const p=ont.posities[ont.sel];p.x=snap(100-p.x);render()}
+function ontSymmetrisch(){
+  // links en rechts per rij aan elkaar koppelen: zelfde hoogte, even ver van het midden
+  const ps=ont.posities;const klaar=new Set();let n=0;
+  ps.forEach((p,i)=>{p.x=snap(p.x);p.y=snap(p.y)});
+  ps.forEach((p,i)=>{if(klaar.has(i))return;
+    if(Math.abs(p.x-50)<RASTER){p.x=50;klaar.add(i);return}
+    let best=null,bd=1e9;ps.forEach((q,j)=>{if(j===i||klaar.has(j))return;if((q.x-50)*(p.x-50)>=0)return;const d=Math.abs(q.y-p.y)*2+Math.abs((100-q.x)-p.x);if(d<bd&&Math.abs(q.y-p.y)<=RASTER*3){bd=d;best=j}});
+    if(best==null)return;const q=ps[best];const y=snap((p.y+q.y)/2);const afst=snap((Math.abs(p.x-50)+Math.abs(q.x-50))/2);
+    p.y=y;q.y=y;p.x=p.x<50?50-afst:50+afst;q.x=q.x<50?50-afst:50+afst;klaar.add(i);klaar.add(best);n++});
+  render();toast(n?n+' paren uitgelijnd':'Geen paren gevonden');
+}
 function initDrag(wrap){
   const svg=wrap.querySelector('svg');let drag=null;
   const pt=e=>{const r=svg.getBoundingClientRect();const vb=svg.viewBox.baseVal;const x=vb.x+(e.clientX-r.left)/r.width*vb.width;const y=vb.y+(e.clientY-r.top)/r.height*vb.height;return {x,y,H:vb.height-8}};
   svg.addEventListener('pointerdown',e=>{const g=e.target.closest('.pos');if(!g)return;drag={i:+g.dataset.i,g,moved:false};svg.setPointerCapture(e.pointerId);e.preventDefault()});
-  svg.addEventListener('pointermove',e=>{if(!drag)return;const p=pt(e);drag.moved=true;const x=Math.max(4,Math.min(96,p.x));const y=Math.max(4,Math.min(p.H-10,p.y));ont.posities[drag.i].x=Math.round(x*10)/10;ont.posities[drag.i].y=Math.round((100-(y/p.H)*100)*10)/10;drag.g.setAttribute('transform',`translate(${x} ${y})`)});
+  svg.addEventListener('pointermove',e=>{if(!drag)return;const p=pt(e);drag.moved=true;const x=Math.max(4,Math.min(96,snap(p.x)));const yp=Math.max(4,Math.min(96,snap(100-(Math.max(4,Math.min(p.H-10,p.y))/p.H)*100)));const y=p.H-(yp/100)*p.H;ont.posities[drag.i].x=x;ont.posities[drag.i].y=yp;drag.g.setAttribute('transform',`translate(${x} ${y})`)});
   const end=e=>{if(!drag)return;if(drag.moved){ont.sel=drag.i;render()}drag=null};
   svg.addEventListener('pointerup',end);svg.addEventListener('pointercancel',end);
 }
@@ -1068,7 +1242,7 @@ PAGES.training=()=>{
   <label class="field-lbl">Notities</label><textarea class="inp" placeholder="Oefeningen, accenten, wat ging goed" onchange="trn('${x.id}').notities=this.value;save()">${esc(x.notities)}</textarea></div>
   <div class="card"><h3>Werkt aan</h3><p class="small muted" style="margin:4px 0 8px">Koppel deze training aan doelen van een wedstrijd. Bij de evaluatie van die wedstrijd zie je dan welke trainingen eraan vooraf gingen.</p>${werktAan(x,t)}</div>
   <div class="card"><h3>Schermafbeelding</h3><p class="small muted" style="margin:4px 0 8px">Wordt verkleind opgeslagen, zodat je hem ook zonder internet op het veld hebt.</p>${x.afbeelding?`<img class="imgprev" src="${x.afbeelding}" alt=""><div class="btnrow mt"><button class="btn ghost" onclick="document.getElementById('trimg').click()">Vervangen</button><button class="btn danger" onclick="trn('${x.id}').afbeelding=null;save();render()">Weg</button></div>`:`<button class="btn sec wide" onclick="document.getElementById('trimg').click()">${I.img} Afbeelding kiezen</button>`}<input type="file" id="trimg" accept="image/*" onchange="laadAfbeelding('${x.id}',this.files[0])"></div>
-  <button class="btn danger wide" onclick="confirmSheet('Training verwijderen?','','Verwijderen',()=>{S.trainingen=S.trainingen.filter(y=>y.id!=='${x.id}');save();back()},true)">Training verwijderen</button>`;
+  <button class="btn danger wide" onclick="confirmSheet('Training verwijderen?','','Verwijderen',()=>{const h=momentopname();S.trainingen=S.trainingen.filter(y=>y.id!=='${x.id}');save();back();verwijderdToast('Training',h)},true)">Training verwijderen</button>`;
   return topbar(esc(x.titel||'Training'),fmtDatum(x.datum,{weekday:'long',day:'numeric',month:'long'}),'',true)+`<div class="main">${html}</div>`;
 };
 function werktAan(x,t){
@@ -1094,8 +1268,7 @@ PAGES.meer=()=>{
   <div class="kv"><span>Laatste back-up</span><b>${last?new Date(last).toLocaleDateString('nl-NL',{day:'numeric',month:'short',year:'numeric'}):'nog nooit'}</b></div><div class="kv"><span>Grootte van je data</span><b>${size} kB</b></div>
   <div class="btnrow mt"><button class="btn" onclick="exportJSON()">${I.share} Exporteer</button><button class="btn ghost" onclick="document.getElementById('impfile').click()">Importeer</button></div><input type="file" id="impfile" accept=".json,application/json" onchange="importJSON(this.files[0])"></div>`;
   html+=`<div class="card"><h2>Overzichten</h2><div class="list"><button class="item" onclick="go('seizoen',{})" ${t?'':'disabled'}><div class="txt"><div class="t">Seizoensoverzicht</div><div class="d">Uitslagen, doelsaldo en doelen</div></div><span class="chev">${I.chev}</span></button><button class="item" onclick="go('balans',{})" ${t?'':'disabled'}><div class="txt"><div class="t">Speeltijdbalans</div><div class="d">Minuten per speler over het seizoen</div></div><span class="chev">${I.chev}</span></button></div></div>`;
-  html+=`<div class="card"><h2>Teams</h2><div class="list">${S.teams.map(x=>`<button class="item" onclick="kiesTeam('${x.id}');tabTo('team')"><span>${shirtSVG(x.tenue,34)}</span><div class="txt"><div class="t">${esc(x.naam)}</div><div class="d">${x.categorie}, ${x.spelers.length} spelers</div></div>${x.id===S.instellingen.actiefTeam?'<span class="pill">actief</span>':''}<span class="chev">${I.chev}</span></button>`).join('')}</div><button class="btn sec wide mt" onclick="nieuwTeam()">${I.plus} Nieuw team</button></div>`;
-  html+=`<div class="card"><h2>Offline</h2><div class="kv"><span>Offline beschikbaar</span><b>${swStatus==='actief'?'ja':(location.protocol.startsWith('http')?'nog niet':'alleen online via GitHub')}</b></div><p class="small muted" style="margin:6px 0 0">Zet sw.js naast index.html in je GitHub map. Na de eerste keer openen werkt de app ook zonder bereik; een nieuwe versie komt vanzelf mee zodra je weer online bent.</p></div>`;
+  html+=`<div class="card"><h2>Teams</h2><div class="list">${S.teams.map(x=>`<button class="item" onclick="kiesTeam('${x.id}');tabTo('team')"><span>${shirtSVG(x.tenue,34)}</span><div class="txt"><div class="t">${esc(x.naam)}</div><div class="d">${geslachtLabel(x)}, ${x.categorie}, ${x.spelers.length} spelers</div></div>${x.id===S.instellingen.actiefTeam?'<span class="pill">actief</span>':''}<span class="chev">${I.chev}</span></button>`).join('')}</div><div class="btnrow mt"><button class="btn sec" onclick="nieuwTeam()">${I.plus} Nieuw team</button><button class="btn ghost" onclick="laadVoorbeeld()">Voorbeeldteam laden</button></div></div>`;
   html+=`<div class="card"><h2>Op je iPhone</h2><p class="small muted" style="margin:4px 0 0">Open deze pagina in Safari, tik op delen en kies "Zet op beginscherm". Dan opent de app zonder adresbalk. Updates komen automatisch mee als je de app opent; je data blijft staan.</p></div>
   <p class="tiny muted" style="text-align:center">Hockeycoach ${VERSIE}</p>`;
   return topbar('Meer','','')+`<div class="main">${html}</div>`;
@@ -1202,12 +1375,15 @@ function maakAfbeelding(w,t){
     else if(o.t==='arc'){x.beginPath();x.ellipse(fx+o.cx*sx,fy+o.cy*sy0,o.r*sx,o.r*sy0,0,o.top?0:Math.PI,o.top?Math.PI:2*Math.PI);x.stroke()}});
   w.opstelling.posities.forEach(p=>{const px=fx+p.x/100*fw,py=fy+fh-p.y/100*fh;x.beginPath();x.arc(px,py,26,0,7);x.fillStyle=p.spelerId?acc:'#fff';x.fill();x.lineWidth=3;x.strokeStyle='#fff';x.stroke();
     x.fillStyle=p.spelerId?contrast(acc):acc;x.font='bold 22px '+DISP;x.textAlign='center';const sp=speler(t,p.spelerId);x.fillText(sp?(sp.nummer||initials(sp.naam)):(p.k?'K':''),px,py+8);
-    x.fillStyle='#fff';x.font='bold 20px '+BODY;x.shadowColor='rgba(0,0,0,.6)';x.shadowBlur=4;x.fillText(sp?kort(t,p.spelerId):p.naam,px,py+52);x.shadowBlur=0;x.textAlign='left'});
+    x.fillStyle='#fff';x.font='bold 20px '+BODY;x.shadowColor='rgba(0,0,0,.6)';x.shadowBlur=4;x.fillText(sp?kort(t,p.spelerId):p.naam,px,py+52);x.shadowBlur=0;
+    if(sp&&w.aanvoerder===p.spelerId){x.beginPath();x.arc(px+22,py-20,13,0,7);x.fillStyle='#ffd54a';x.fill();x.lineWidth=2;x.strokeStyle='#15201a';x.stroke();x.fillStyle='#15201a';x.font='bold 17px '+DISP;x.fillText('C',px+22,py-14)}
+    x.textAlign='left'});
   // rechterkolom: systeem, bank, tenue, doelen
   const rx=640,rw=W-rx-40;let ty=fy+26;
   const wrapText=(txt,px,py,maxW,lh)=>{const words=String(txt).split(' ');let line='';for(const wd of words){const test=line?line+' '+wd:wd;if(x.measureText(test).width>maxW&&line){x.fillText(line,px,py);py+=lh;line=wd}else line=test}if(line){x.fillText(line,px,py);py+=lh}return py};
   x.fillStyle='#15201a';x.font='bold 36px '+DISP;x.fillText(w.opstelling.naam,rx,ty);ty+=46;
   const opg=w.opstelling.posities.filter(p=>p.spelerId).map(p=>p.spelerId);const bank=w.aanwezig.filter(id=>!opg.includes(id));
+  if(w.aanvoerder&&speler(t,w.aanvoerder)){x.font='bold 26px '+DISP;x.fillStyle='#4d5a52';x.fillText('Aanvoerder',rx,ty);ty+=32;x.font='26px '+BODY;x.fillStyle='#15201a';x.fillText(naam(t,w.aanvoerder),rx,ty);ty+=44}
   x.font='bold 26px '+DISP;x.fillStyle='#4d5a52';x.fillText('Bank',rx,ty);ty+=32;x.font='26px '+BODY;x.fillStyle='#15201a';ty=wrapText(bank.map(id=>kort(t,id)).join(', ')||'niemand',rx,ty,rw,32);ty+=18;
   if(w.doelen&&w.doelen.length){x.font='bold 26px '+DISP;x.fillStyle='#4d5a52';x.fillText('Doelen',rx,ty);ty+=32;x.font='26px '+BODY;x.fillStyle='#15201a';w.doelen.slice(0,6).forEach(d=>{ty=wrapText('\u2022 '+d.tekst,rx,ty,rw,32);(d.sub||[]).slice(0,5).forEach(sd=>{x.font='23px '+BODY;x.fillStyle='#4d5a52';ty=wrapText('\u2013 '+sd.tekst,rx+28,ty,rw-28,28);x.font='26px '+BODY;x.fillStyle='#15201a'})});ty+=18}
   // wissellijnen in twee kolommen onder het veld
@@ -1225,7 +1401,7 @@ function maakAfbeelding(w,t){
     y+=44;
     // keten als blokjes
     const items=[];let prev=null,n=0;
-    for(const e of l.events){if(n>=P)break;if(prev!==e.inId){items.push({t:'node',id:e.inId,bank:true});n++}items.push({t:'arr',draai:(e.draai||[]).map(d=>kort(t,d.spelerId)+' \u2192 '+posNaamI(d.naar))});items.push({t:'node',id:e.uitId});n++;prev=e.uitId}
+    for(const e of l.events){if(n>=P)break;if(prev!==e.inId){items.push({t:'node',id:e.inId,bank:true});n++}items.push({t:'arr',conflict:!!e.conflict,draai:(e.draai||[]).map(d=>kort(t,d.spelerId)+' \u2192 '+posNaamI(d.naar))});items.push({t:'node',id:e.uitId});n++;prev=e.uitId}
     const uitz=Object.keys(BK).filter(id=>l.bank&&l.bank[id]!=null&&l.bank[id]!==l.bankStd);
     const nodeInfo=id=>{const mag=lijnMag(w,t,l,id);const isVast=mag.length===1&&l.posities.length>1;return {naam:kort(t,id),tijd:String(BK[id]),pos:isVast?posNaamI(mag[0]):(mag.length>=l.posities.length?'overal':mag.map(posNaamI).join(', ')),vast:isVast}};
     const nodeW=inf=>{x.font='bold 28px '+DISP;const a=x.measureText(inf.naam).width;x.font='bold 20px '+DISP;const b=x.measureText(inf.pos).width+(inf.vast?24:0);return Math.max(96,Math.max(a,b)+30)};
@@ -1239,7 +1415,7 @@ function maakAfbeelding(w,t){
           x.fillStyle='#15201a';x.font='bold 28px '+DISP;x.fillText(inf.naam,cx+wdt/2,rowY+56);
           x.font='bold 20px '+DISP;if(inf.vast){const pw=x.measureText(inf.pos).width+24;x.fillStyle='#15201a';x.beginPath();x.roundRect(cx+wdt/2-pw/2,rowY+66,pw,24,12);x.fill();x.fillStyle='#fff';x.fillText(inf.pos,cx+wdt/2,rowY+84)}else{x.fillStyle='#8a958e';x.fillText(inf.pos,cx+wdt/2,rowY+84)}
           x.textAlign='left'}
-        else{const mx=cx+wdt/2,my=rowY+nodeH/2-(it.draai.length?18:0);x.strokeStyle='#15201a';x.lineWidth=4;x.lineCap='round';x.beginPath();x.moveTo(mx-14,my);x.lineTo(mx+14,my);x.moveTo(mx+6,my-8);x.lineTo(mx+14,my);x.lineTo(mx+6,my+8);x.stroke();
+        else{const mx=cx+wdt/2,my=rowY+nodeH/2-(it.draai.length?18:0);x.strokeStyle=it.conflict?'#c62f2f':'#15201a';x.lineWidth=4;x.lineCap='round';x.beginPath();x.moveTo(mx-14,my);x.lineTo(mx+14,my);x.moveTo(mx+6,my-8);x.lineTo(mx+14,my);x.lineTo(mx+6,my+8);x.stroke();
           x.textAlign='center';x.fillStyle=acc;x.font='bold 18px '+BODY;it.draai.forEach((d,i)=>x.fillText(d,mx,my+30+i*20));x.textAlign='left'}
       }
       cx+=wdt+(it.t==='node'?6:6);
@@ -1256,8 +1432,7 @@ function maakAfbeelding(w,t){
 load();
 if(!S.instellingen.actiefTeam&&S.teams[0])S.instellingen.actiefTeam=S.teams[0].id;
 render();
-let swStatus='niet beschikbaar';
-if('serviceWorker' in navigator&&location.protocol.startsWith('http')){navigator.serviceWorker.register('sw.js').then(()=>{swStatus='actief';}).catch(()=>{swStatus='mislukt'})}
+if('serviceWorker' in navigator&&location.protocol.startsWith('http')){navigator.serviceWorker.register('sw.js').catch(()=>{})}
 </script>
 </body>
 </html>
